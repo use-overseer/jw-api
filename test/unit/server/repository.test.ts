@@ -259,6 +259,23 @@ describe('repository utils', () => {
         })
       )
     })
+
+    it('should throw error if media item is not found', async () => {
+      const pubMock = {
+        key: 'pub-w_202401_1_AUDIO',
+        langwritten: 'E'
+      } as const
+      const mockApiResult = { media: [] }
+      vi.mocked($fetch).mockResolvedValue(mockApiResult)
+
+      await expect(mediatorRepository.fetchMediaItem(pubMock)).rejects.toThrow(
+        'Could not find media item.'
+      )
+      expect(createNotFoundError).toHaveBeenCalledWith('Could not find media item.', {
+        key: 'pub-w_202401_1_AUDIO',
+        publication: pubMock
+      })
+    })
   })
 
   describe('mediatorRepository.fetchCategories', () => {
@@ -404,6 +421,11 @@ describe('repository utils', () => {
       await expect(bibleRepository.fetchBibleChapter(book, chapter, locale)).rejects.toThrow(
         'Could not find chapter data.'
       )
+      expect(createNotFoundError).toHaveBeenCalledWith('Could not find chapter data.', {
+        book,
+        chapter,
+        locale
+      })
     })
   })
 
@@ -464,6 +486,12 @@ describe('repository utils', () => {
       await expect(
         bibleRepository.fetchBibleVerse(book, chapter, verseNumber, locale)
       ).rejects.toThrow('Could not find verse data.')
+      expect(createNotFoundError).toHaveBeenCalledWith('Could not find verse data.', {
+        book,
+        chapter,
+        locale,
+        verseNumber
+      })
     })
   })
 })

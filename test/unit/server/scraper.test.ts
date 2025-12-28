@@ -66,6 +66,9 @@ describe('scraper utils', () => {
       `
       vi.mocked($fetch).mockResolvedValue(mockHtml)
       await expect(scrapeBibleDataUrl('it')).rejects.toThrow('Failed to find alternate url')
+      expect(createNotFoundError).toHaveBeenCalledWith('Failed to find alternate url.', {
+        locale: 'it'
+      })
     })
   })
 })

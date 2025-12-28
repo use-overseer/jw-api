@@ -54,7 +54,13 @@ export const mediatorRepository = {
     })
 
     const data = result.media[0]
-    if (!data) throw new Error(`Not Found: ${publication.langwritten}/${key}`)
+    if (!data) {
+      throw createNotFoundError('Could not find media item.', {
+        clientType,
+        key,
+        publication
+      })
+    }
 
     return data
   },
