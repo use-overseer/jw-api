@@ -28,7 +28,7 @@ export interface CategoryResult {
   pagination?: MediatorPagination
 }
 
-export interface CategoryResultDetailed extends CategoryResult {
+export interface CategoryResultDetailed extends Omit<CategoryResult, 'category'> {
   category: CategoryDetailed
 }
 

@@ -73,7 +73,7 @@ export interface BibleRange {
   verses: BibleVerse[]
 }
 
-export interface BibleRangeSingle extends BibleRange {
+export interface BibleRangeSingle extends Omit<BibleRange, 'citationVerseRange'> {
   citationVerseRange: `${number}:${number}`
 }
 
