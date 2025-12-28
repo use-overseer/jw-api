@@ -10,11 +10,13 @@ import { generateMediaKey, generateVerseId } from '../../../server/utils/general
 // Mock globals for tests since they are auto-imported in Nuxt but not here
 const $fetch = vi.fn()
 const scrapeBibleDataUrl = vi.fn()
+const createNotFoundError = vi.fn((msg) => new Error(msg))
 
 vi.stubGlobal('$fetch', $fetch)
 vi.stubGlobal('generateVerseId', generateVerseId)
 vi.stubGlobal('generateMediaKey', generateMediaKey)
 vi.stubGlobal('scrapeBibleDataUrl', scrapeBibleDataUrl)
+vi.stubGlobal('createNotFoundError', createNotFoundError)
 
 describe('repository utils', () => {
   beforeEach(() => {
@@ -59,8 +61,70 @@ describe('repository utils', () => {
     })
   })
 
+  describe('wolRepository.fetchYeartextDetails', () => {
+    it('should fetch yeartext details (cache miss)', async () => {
+      const year = 2040
+      const wtlocale = 'E'
+      const jsonUrl = `https://wol.jw.org/en/wol/dt/r1/lp-e/${year}/1/1`
+      const finderResult = { jsonUrl }
+      const detailsResult = { title: 'God is love.' }
+
+      vi.mocked($fetch).mockResolvedValueOnce(finderResult).mockResolvedValueOnce(detailsResult)
+
+      const result = await wolRepository.fetchYeartextDetails(wtlocale, year)
+
+      expect(result).toEqual(detailsResult)
+      expect($fetch).toHaveBeenNthCalledWith(
+        1,
+        '/wol/finder',
+        expect.objectContaining({
+          query: expect.objectContaining({
+            docid: `110${year}800`,
+            wtlocale
+          })
+        })
+      )
+      expect($fetch).toHaveBeenNthCalledWith(
+        2,
+        jsonUrl,
+        expect.objectContaining({
+          baseURL: 'https://wol.jw.org'
+        })
+      )
+    })
+
+    it('should use cached URL for subsequent calls', async () => {
+      const year = 2041
+      const wtlocale = 'E'
+      const jsonUrl = `https://wol.jw.org/en/wol/dt/r1/lp-e/${year}/1/1`
+      const finderResult = { jsonUrl }
+      const detailsResult = { title: 'Faith is power.' }
+
+      vi.mocked($fetch)
+        .mockResolvedValueOnce(finderResult)
+        .mockResolvedValueOnce(detailsResult)
+        .mockResolvedValueOnce(detailsResult)
+
+      // First call (cache miss)
+      await wolRepository.fetchYeartextDetails(wtlocale, year)
+
+      // Second call (cache hit)
+      const result = await wolRepository.fetchYeartextDetails(wtlocale, year)
+
+      expect(result).toEqual(detailsResult)
+      // Expect 3 calls total: 1 finder, 1 details (first), 1 details (second)
+      expect($fetch).toHaveBeenCalledTimes(3)
+      expect($fetch).toHaveBeenLastCalledWith(
+        jsonUrl,
+        expect.objectContaining({
+          baseURL: 'https://wol.jw.org'
+        })
+      )
+    })
+  })
+
   describe('pubMediaRepository.fetchPublication', () => {
-    it('should fetch publication details', async () => {
+    it('should fetch publication details with PublicationFetcher params', async () => {
       const pubMock = { issue: 202401, langwritten: 'E', pub: 'w' } as const
       const mockApiResult = { pub: 'w', title: 'Watchtower' }
       vi.mocked($fetch).mockResolvedValue(mockApiResult)
@@ -82,16 +146,103 @@ describe('repository utils', () => {
         })
       )
     })
+
+    it('should fetch publication details with PublicationDocFetcher params', async () => {
+      const pubMock = { docid: 12345, langwritten: 'E' } as const
+      const mockApiResult = { docid: 12345, title: 'Article Title' }
+      vi.mocked($fetch).mockResolvedValue(mockApiResult)
+
+      const result = await pubMediaRepository.fetchPublication(pubMock)
+      expect(result).toEqual(mockApiResult)
+      expect($fetch).toHaveBeenCalledWith(
+        '/GETPUBMEDIALINKS',
+        expect.objectContaining({
+          baseURL: 'https://b.jw-cdn.org/apis/pub-media',
+          query: expect.objectContaining({
+            alllangs: '0',
+            docid: 12345,
+            langwritten: 'E',
+            output: 'json',
+            txtCMSLang: 'E'
+          })
+        })
+      )
+    })
+
+    it('should fetch publication details with PublicationBookFetcher params', async () => {
+      const pubMock = { booknum: 1, langwritten: 'E', pub: 'nwt' } as const
+      const mockApiResult = { booknum: 1, pub: 'nwt', title: 'Genesis' }
+      vi.mocked($fetch).mockResolvedValue(mockApiResult)
+
+      const result = await pubMediaRepository.fetchPublication(pubMock)
+      expect(result).toEqual(mockApiResult)
+      expect($fetch).toHaveBeenCalledWith(
+        '/GETPUBMEDIALINKS',
+        expect.objectContaining({
+          baseURL: 'https://b.jw-cdn.org/apis/pub-media',
+          query: expect.objectContaining({
+            alllangs: '0',
+            booknum: 1,
+            langwritten: 'E',
+            output: 'json',
+            pub: 'nwt',
+            txtCMSLang: 'E'
+          })
+        })
+      )
+    })
   })
 
   describe('mediatorRepository.fetchMediaItem', () => {
-    it('should fetch media items', async () => {
+    it('should fetch media items with PublicationFetcher', async () => {
       const pubMock = {
         fileformat: 'MP3',
         issue: 20240100,
         langwritten: 'E',
         pub: 'w',
         track: 1
+      } as const
+      const mockMediaItem = { guid: '123' }
+      const mockApiResult = { media: [mockMediaItem] }
+      vi.mocked($fetch).mockResolvedValue(mockApiResult)
+
+      const result = await mediatorRepository.fetchMediaItem(pubMock)
+
+      expect(result).toEqual(mockMediaItem)
+
+      expect($fetch).toHaveBeenCalledWith(
+        expect.stringMatching(/\/media-items\/E\/pub-w_202401_1_AUDIO/),
+        expect.objectContaining({
+          baseURL: 'https://b.jw-cdn.org/apis/mediator/v1'
+        })
+      )
+    })
+
+    it('should fetch media items with DocFetcher', async () => {
+      const pubMock = {
+        docid: 12345,
+        langwritten: 'E'
+      } as const
+      const mockMediaItem = { guid: '123' }
+      const mockApiResult = { media: [mockMediaItem] }
+      vi.mocked($fetch).mockResolvedValue(mockApiResult)
+
+      const result = await mediatorRepository.fetchMediaItem(pubMock)
+
+      expect(result).toEqual(mockMediaItem)
+
+      expect($fetch).toHaveBeenCalledWith(
+        expect.stringMatching(/\/media-items\/E\/docid-12345/),
+        expect.objectContaining({
+          baseURL: 'https://b.jw-cdn.org/apis/mediator/v1'
+        })
+      )
+    })
+
+    it('should fetch media items with key/langwritten params', async () => {
+      const pubMock = {
+        key: 'pub-w_202401_1_AUDIO',
+        langwritten: 'E'
       } as const
       const mockMediaItem = { guid: '123' }
       const mockApiResult = { media: [mockMediaItem] }
@@ -239,6 +390,21 @@ describe('repository utils', () => {
       expect(scrapeBibleDataUrl).toHaveBeenCalledWith(locale)
       expect($fetch).toHaveBeenCalledWith(`${mockUrl}/${range}`)
     })
+
+    it('should throw error if chapter data is not found', async () => {
+      const book = 1
+      const chapter = 1
+      const locale = 'en'
+      const mockUrl = 'https://mock-url'
+      const mockResult = { ranges: {} }
+
+      vi.mocked(scrapeBibleDataUrl).mockResolvedValue(mockUrl)
+      vi.mocked($fetch).mockResolvedValue(mockResult)
+
+      await expect(bibleRepository.fetchBibleChapter(book, chapter, locale)).rejects.toThrow(
+        'Could not find chapter data.'
+      )
+    })
   })
 
   describe('bibleRepository.fetchBibleData', () => {
@@ -282,6 +448,22 @@ describe('repository utils', () => {
 
       expect(result).toEqual(mockVerse)
       expect($fetch).toHaveBeenCalledWith(`${mockUrl}/${verseId}`)
+    })
+
+    it('should throw error if verse data is not found', async () => {
+      const book = 1
+      const chapter = 1
+      const verseNumber = 1
+      const locale = 'en'
+      const mockUrl = 'https://mock-url'
+      const mockResult = { ranges: {} }
+
+      vi.mocked(scrapeBibleDataUrl).mockResolvedValue(mockUrl)
+      vi.mocked($fetch).mockResolvedValue(mockResult)
+
+      await expect(
+        bibleRepository.fetchBibleVerse(book, chapter, verseNumber, locale)
+      ).rejects.toThrow('Could not find verse data.')
     })
   })
 })

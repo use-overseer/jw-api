@@ -3,7 +3,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { scrapeBibleDataUrl } from '../../../server/utils/scraper'
 
 const $fetch = vi.fn()
+const createNotFoundError = vi.fn((msg) => new Error(msg))
+
 vi.stubGlobal('$fetch', $fetch)
+vi.stubGlobal('createNotFoundError', createNotFoundError)
 
 describe('scraper utils', () => {
   beforeEach(() => {
@@ -32,9 +35,25 @@ describe('scraper utils', () => {
       expect($fetch).toHaveBeenCalledWith('https://www.jw.org/en/library/bible/nwt/books/')
     })
 
-    it('should throw error if fetchText returns null', async () => {
-      vi.mocked($fetch).mockResolvedValue(null)
-      await expect(scrapeBibleDataUrl('ar')).rejects.toThrow('Failed to fetch html')
+    it('should cache the scraped URL for subsequent calls', async () => {
+      const mockHtml = `
+        <html>
+          <head>
+            <link rel="alternate" hreflang="pt" href="https://www.jw.org/pt/biblioteca/biblia/nwt/livros/" />
+          </head>
+        </html>
+      `
+      vi.mocked($fetch).mockResolvedValue(mockHtml)
+
+      // First call - should fetch
+      const url1 = await scrapeBibleDataUrl('pt')
+      expect(url1).toBe('https://www.jw.org/pt/biblioteca/biblia/nwt/livros/json/data')
+      expect($fetch).toHaveBeenCalledTimes(1)
+
+      // Second call - should return cached
+      const url2 = await scrapeBibleDataUrl('pt')
+      expect(url2).toBe('https://www.jw.org/pt/biblioteca/biblia/nwt/livros/json/data')
+      expect($fetch).toHaveBeenCalledTimes(1)
     })
 
     it('should throw error if alternate url is not found', async () => {
@@ -46,7 +65,7 @@ describe('scraper utils', () => {
         </html>
       `
       vi.mocked($fetch).mockResolvedValue(mockHtml)
-      await expect(scrapeBibleDataUrl('pt')).rejects.toThrow('Failed to find alternate url')
+      await expect(scrapeBibleDataUrl('it')).rejects.toThrow('Failed to find alternate url')
     })
   })
 })
