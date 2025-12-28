@@ -1,4 +1,4 @@
-import type { JwLangCode, JwLangScript, JwLangSymbol } from './lang.types'
+import type { JwLangCode, JwLangSymbol } from './lang.types'
 
 export interface CategoriesResult {
   categories: CategoryParent[]
@@ -113,7 +113,7 @@ export interface MediatorLanguage {
   isSignLanguage: boolean
   locale: JwLangSymbol
   name: string
-  script: JwLangScript
+  script: string
   vernacular: string
 }
 
@@ -132,7 +132,7 @@ export interface MediatorResultLanguage {
   isSignLanguage: boolean
   languageCode: JwLangCode
   locale: JwLangSymbol
-  script: JwLangScript
+  script: string
 }
 
 export type string = 'container' | 'ondemand'

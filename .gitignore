@@ -25,3 +25,4 @@ logs
 
 # Temp files
 temp
+server/api/temp.get.ts
