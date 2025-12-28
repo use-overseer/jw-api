@@ -1,6 +1,8 @@
 import type { BibleBookNr } from './bible'
 import type { JwLangCode, JwLangSymbol } from './lang.types'
 
+export type PubFetcher = PublicationBookFetcher | PublicationDocFetcher | PublicationFetcher
+
 /* eslint-disable perfectionist/sort-interfaces */
 /* eslint-disable perfectionist/sort-object-types */
 export interface Publication {

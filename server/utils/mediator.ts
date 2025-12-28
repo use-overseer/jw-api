@@ -1,11 +1,6 @@
 import { mediatorRepository } from '#server/repository/mediator'
 
-const getMediaWithSubtitles = async (
-  publication:
-    | PublicationDocFetcher
-    | PublicationFetcher
-    | { key: MediaKey; langwritten: JwLangCode }
-) => {
+const getMediaWithSubtitles = async (publication: MediaFetcher) => {
   const video = await mediatorRepository.fetchMediaItem(publication)
 
   const bestMatch = findBestFile(video?.files ?? [], true)
@@ -50,22 +45,12 @@ export const mediatorService = {
     const languages = await mediatorRepository.fetchLanguages(locale)
     return languages
   },
-  getMediaItem: async (
-    publication:
-      | PublicationDocFetcher
-      | PublicationFetcher
-      | { key: MediaKey; langwritten: JwLangCode }
-  ) => {
+  getMediaItem: async (publication: MediaFetcher) => {
     const mediaItem = await mediatorRepository.fetchMediaItem(publication)
     return mediaItem
   },
   getMediaWithSubtitles,
-  getSubtitles: async (
-    publication:
-      | PublicationDocFetcher
-      | PublicationFetcher
-      | { key: MediaKey; langwritten: JwLangCode }
-  ) => {
+  getSubtitles: async (publication: MediaFetcher) => {
     const { bestMatch, video } = await getMediaWithSubtitles(publication)
 
     if (!bestMatch?.subtitles) throw new Error('No subtitles found')

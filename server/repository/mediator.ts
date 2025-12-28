@@ -40,13 +40,7 @@ export const mediatorRepository = {
 
     return result.languages
   },
-  fetchMediaItem: async (
-    publication:
-      | PublicationDocFetcher
-      | PublicationFetcher
-      | { key: MediaKey; langwritten: JwLangCode },
-    clientType: ClientType = 'www'
-  ) => {
+  fetchMediaItem: async (publication: MediaFetcher, clientType: ClientType = 'www') => {
     const key = 'key' in publication ? publication.key : generateMediaKey(publication)
 
     const result = await $fetch<MediaDataResult>(`/media-items/${publication.langwritten}/${key}`, {

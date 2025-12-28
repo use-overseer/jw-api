@@ -55,44 +55,55 @@ export interface MediaDataResult {
   media: MediaItem[]
 }
 
+export type MediaFetcher =
+  | PublicationDocFetcher
+  | PublicationFetcher
+  | { key: MediaKey; langwritten: JwLangCode }
+
+/* eslint-disable perfectionist/sort-interfaces */
 export interface MediaItem {
-  availableLanguages: JwLangCode[]
+  guid: string
+  languageAgnosticNaturalKey: MediaKey
+  naturalKey: string
+  type: string
+  primaryCategory: string
+  title: string
   description: string
+  firstPublished: `${number}-${number}-${number}T${number}:${number}:${number}.${number}Z`
   duration: number
   durationFormattedHHMM: `${number}:${number}`
   durationFormattedMinSec: `${number}m ${number}s`
-  files: MediaItemFile[]
-  firstPublished: `${number}-${number}-${number}T${number}:${number}:${number}.${number}Z`
-  guid: string
-  images: Partial<Record<ImageType, Partial<Record<ImageSize, string>>>>
-  languageAgnosticNaturalKey: MediaKey
-  naturalKey: string
-  primaryCategory: string
-  printReferences: string[]
   tags: string[]
-  title: string
-  type: string
+  files: MediaItemFile[]
+  images: ImagesObject
+  availableLanguages: JwLangCode[]
+  printReferences: string[]
 }
+/* eslint-enable perfectionist/sort-interfaces */
 
+/* eslint-disable perfectionist/sort-interfaces */
+/* eslint-disable perfectionist/sort-object-types */
 export interface MediaItemFile {
-  bitRate: number
+  progressiveDownloadURL: string
   checksum: string
-  duration: number
   filesize: number
+  modifiedDatetime: `${number}-${number}-${number}T${number}:${number}:${number}.${number}Z`
+  bitRate: number
+  duration: number
   frameHeight: number
-  frameRate: number
   frameWidth: number
   label: `${number}p`
+  frameRate: number
   mimetype: `${string}/${string}`
-  modifiedDatetime: `${number}-${number}-${number}T${number}:${number}:${number}.${number}Z`
-  progressiveDownloadURL: string
   subtitled: boolean
   subtitles?: {
-    checksum: string
-    modifiedDatetime: `${number}-${number}-${number}T${number}:${number}:${number}.${number}Z`
     url: string
+    modifiedDatetime: `${number}-${number}-${number}T${number}:${number}:${number}.${number}Z`
+    checksum: string
   }
 }
+/* eslint-enable perfectionist/sort-interfaces */
+/* eslint-enable perfectionist/sort-object-types */
 
 export type MediaKey = `docid-${string}` | `pub-${string}`
 
