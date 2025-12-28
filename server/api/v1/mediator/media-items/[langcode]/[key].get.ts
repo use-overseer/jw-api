@@ -11,5 +11,5 @@ const routeSchema = z.object({
 export default defineLoggedEventHandler(async (event) => {
   const { key, langcode: langwritten } = await getValidatedRouterParams(event, routeSchema.parse)
 
-  return await mediatorService.getMediaItem({ key, langwritten })
+  return await mediatorService.getMediaItem({ key: key as MediaKey, langwritten })
 })

@@ -18,11 +18,11 @@ export default defineMcpTool({
   cache: '4w',
   description: 'Get the transcript of a video from JW.org.',
   handler: async ({ langcode, url }) => {
-    const id = extractMediaKey(url)
+    const key = extractMediaKey(url)
     const langwritten = extractLangCode(url)
-    if (!id) throw new Error('Could not extract publication ID from URL')
-    const result = await bibleService.getSubtitles({
-      id,
+    if (!key) throw new Error('Could not extract publication ID from URL')
+    const result = await mediatorService.getSubtitles({
+      key,
       langwritten: langcode || langwritten || 'E'
     })
 

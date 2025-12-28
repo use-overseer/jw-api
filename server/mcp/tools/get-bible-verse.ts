@@ -12,7 +12,7 @@ export default defineMcpTool({
   handler: async ({ book, chapter, symbol, verseNumber }) => {
     try {
       const verse = await bibleService.getVerse({
-        book: book as BibleBookNr,
+        book,
         chapter,
         locale: symbol,
         verse: verseNumber

@@ -31,74 +31,6 @@ export interface BibleBook {
 }
 /* eslint-enable perfectionist/sort-interfaces */
 
-export type BibleBookNr =
-  | 1
-  | 2
-  | 3
-  | 4
-  | 5
-  | 6
-  | 7
-  | 8
-  | 9
-  | 10
-  | 11
-  | 12
-  | 13
-  | 14
-  | 15
-  | 16
-  | 17
-  | 18
-  | 19
-  | 20
-  | 21
-  | 22
-  | 23
-  | 24
-  | 25
-  | 26
-  | 27
-  | 28
-  | 29
-  | 30
-  | 31
-  | 32
-  | 33
-  | 34
-  | 35
-  | 36
-  | 37
-  | 38
-  | 39
-  | 40
-  | 41
-  | 42
-  | 43
-  | 44
-  | 45
-  | 46
-  | 47
-  | 48
-  | 49
-  | 50
-  | 51
-  | 52
-  | 53
-  | 54
-  | 55
-  | 56
-  | 57
-  | 58
-  | 59
-  | 60
-  | 61
-  | 62
-  | 63
-  | 64
-  | 65
-  | 66
-
 export interface BibleChapterOutline {
   content: string
   id: number
@@ -109,12 +41,12 @@ export interface BibleChapterOutline {
 
 export interface BibleCrossReference {
   id: number
-  source: VerseId
+  source: `${number}`
   targets: {
     abbreviatedCitation: string
     category: { id: `${number}`; label: string }
     standardCitation: string
-    vs: VerseId
+    vs: `${number}`
   }[]
 }
 
@@ -125,68 +57,58 @@ export interface BibleFootnote {
   source: `${number}`
 }
 
-/* eslint-disable perfectionist/sort-interfaces */
 export interface BibleRange {
-  citation: string
-  link: string
-  validRange: `${BibleBookNr}${number}-${BibleBookNr}${number}`
-  citationVerseRange: `${number}:${number}-${number}:${number}` | `${number}:${number}-${number}`
-  verses: BibleVerse[]
   chapterOutlines: BibleChapterOutline[]
+  citation: string
+  citationVerseRange: `${number}:${number}-${number}:${number}` | `${number}:${number}-${number}`
+  commentaries: unknown[]
   crossReferences: BibleCrossReference[]
   footnotes: BibleFootnote[]
-  superscriptions: unknown[]
-  commentaries: unknown[]
+  html: string
+  link: string
   multimedia: unknown[]
   pubReferences: unknown[]
-  html: string
+  superscriptions: unknown[]
+  validRange: `${`${number}`}-${`${number}`}`
+  verses: BibleVerse[]
 }
-/* eslint-enable perfectionist/sort-interfaces */
 
 export interface BibleRangeSingle extends BibleRange {
   citationVerseRange: `${number}:${number}`
 }
 
-/* eslint-disable perfectionist/sort-interfaces */
-/* eslint-disable perfectionist/sort-object-types */
 export interface BibleResult {
   additionalPages: unknown[]
   currentLocale: JwLangSymbol
-  ranges: Partial<Record<`${BibleBookNr}${number}-${BibleBookNr}${number}`, BibleRange>>
-  status: number
   editionData: {
-    locale: JwLangSymbol
     bookCount: `${number}`
+    books: Record<number, BibleBook>
+    locale: JwLangSymbol
+    titleFormat: string
+    url: string
+    vernacularAbbreviation: string
     vernacularFullName: string
     vernacularShortName: null | string
-    vernacularAbbreviation: string
-    url: string
-    titleFormat: string
-    books: Record<BibleBookNr, BibleBook>
   }
+  ranges: Partial<Record<`${`${number}`}-${`${number}`}`, BibleRange>>
+  status: number
 }
-/* eslint-enable perfectionist/sort-interfaces */
-/* eslint-enable perfectionist/sort-object-types */
 
-export interface BibleResultEmpty extends BibleResult {
+export interface BibleResultEmpty extends Omit<BibleResult, 'ranges'> {
   copyrightPage: unknown
   ranges: []
 }
 
-export interface BibleResultSingle extends BibleRange {
-  ranges: Partial<Record<VerseId, BibleRangeSingle>>
+export interface BibleResultSingle extends Omit<BibleResult, 'ranges'> {
+  ranges: Partial<Record<`${number}`, BibleRangeSingle>>
 }
 
-/* eslint-disable perfectionist/sort-interfaces */
 export interface BibleVerse {
-  vsID: VerseId
-  bookNumber: BibleBookNr
-  chapterNumber: number
-  verseNumber: number
-  standardCitation: string
   abbreviatedCitation: string
+  bookNumber: number
+  chapterNumber: number
   content: string
+  standardCitation: string
+  verseNumber: number
+  vsID: `${number}`
 }
-/* eslint-enable perfectionist/sort-interfaces */
-
-export type VerseId = `${BibleBookNr}${number}`

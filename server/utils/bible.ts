@@ -10,12 +10,12 @@ export const bibleService = {
     chapter,
     locale = 'en'
   }: {
-    book: BibleBookNr
+    book: number
     chapter: number
     locale?: JwLangSymbol
   }) => {
     console.log('getChapter', book, chapter, locale)
-    const result = await bibleRepository.fetchBibleChapter(locale, book, chapter)
+    const result = await bibleRepository.fetchBibleChapter(book, chapter, locale)
     return result
   },
   getVerse: async ({
@@ -24,7 +24,7 @@ export const bibleService = {
     locale = 'en',
     verse
   }: {
-    book: BibleBookNr
+    book: number
     chapter: number
     locale?: JwLangSymbol
     verse: number

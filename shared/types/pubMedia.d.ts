@@ -1,4 +1,3 @@
-import type { BibleBookNr } from './bible'
 import type { JwLangCode, JwLangSymbol } from './lang.types'
 
 export type PubFetcher = PublicationBookFetcher | PublicationDocFetcher | PublicationFetcher
@@ -37,7 +36,7 @@ export interface Publication {
 /* eslint-enable perfectionist/sort-object-types */
 
 export interface PublicationBookFetcher {
-  booknum: BibleBookNr
+  booknum: number
   fileformat?: PublicationFileFormat
   langwritten: JwLangCode
   pub: 'nwt'

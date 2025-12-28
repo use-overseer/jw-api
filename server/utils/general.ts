@@ -74,11 +74,11 @@ export const extractMediaKey = (input: string): MediaKey | null => {
 }
 
 export const generateVerseId = (
-  book: BibleBookNr,
+  book: number,
   chapter: number,
   verseNumber: number
-): VerseId => {
-  return `${book}${chapter.toString().padStart(3, '0')}${verseNumber.toString().padStart(3, '0')}` as VerseId
+): `${number}` => {
+  return `${book}${chapter.toString().padStart(3, '0')}${verseNumber.toString().padStart(3, '0')}` as `${number}`
 }
 
 export const extractResolution = (file: MediaItemFile): number => {

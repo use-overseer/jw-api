@@ -1,4 +1,5 @@
 import type { EventHandler, EventHandlerRequest } from 'h3'
+import type pino from 'pino'
 import type { output } from 'zod'
 
 export const defineLoggedEventHandler = <
@@ -13,7 +14,9 @@ export const defineLoggedEventHandler = <
   handler: EventHandler<T, Promise<output<D>>>
 ): EventHandler<T, Promise<output<D>>> =>
   defineEventHandler<T>(async (event) => {
-    const logger = event.node.req.log
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-ignore: nuxt typecheck doesn't know about the custom properties
+    const logger = event.node.req.log as pino.Logger
     const startTime = Date.now()
     logger.info(`Request received: ${event.node.req.url}`)
 
