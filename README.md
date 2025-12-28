@@ -1,75 +1,52 @@
-# Nuxt Minimal Starter
+# JW API
 
-Look at the [Nuxt documentation](https://nuxt.com/docs/getting-started/introduction) to learn more.
+**JW API** is a robust and comprehensive interface for accessing data related to JW.org services. It provides a unified way to retrieve information about publications, media, languages, and daily texts, serving as a bridge to various underlying data sources.
 
-## Setup
+## Overview
 
-Make sure to install dependencies:
+This application acts as a central API gateway that simplifies interaction with:
+-   **Mediator**: Access detailed categorization, media items, and translation data.
+-   **WOL (Watchtower Online Library)**: Retrieve daily texts and year texts programmatically.
+-   **Publication Media**: Fetch metadata and links for various publications.
+-   **Bible Data**: Access Bible books and verse data.
 
-```bash
-# npm
-npm install
+In addition to standard REST endpoints, this project includes a **Model Context Protocol (MCP)** server, enabling AI agents to directly query JW-related data (like Bible verses and transcripts) for enhanced context.
 
-# pnpm
-pnpm install
+## Key Features
 
-# yarn
-yarn install
+-   **RESTful API**: Clean and structured endpoints for querying data.
+-   **Multi-Language Support**: robust handling of language codes and translations.
+-   **Media Integration**: Easy access to media items and publication details.
+-   **AI Ready**: Built-in MCP server for integrating with AI assistants.
+-   **Modern Tech Stack**: Built on Nuxt 4, ensuring high performance and type safety.
 
-# bun
-bun install
-```
+## Getting Started (For Users)
 
-## Development Server
+This is an API service. If you have the service running (locally or hosted), you can interact with it via HTTP requests.
 
-Start the development server on `http://localhost:3000`:
+### Example Endpoints
 
-```bash
-# npm
-npm run dev
+Assuming the API is running at `http://localhost:3000`:
 
-# pnpm
-pnpm dev
+-   **Get Year Text**:
+    `GET /api/v1/wol/yeartext`
+    
+-   **Get Languages**:
+    `GET /api/v1/mediator/languages/E` (where 'E' is the language code)
 
-# yarn
-yarn dev
+-   **Get Publication Media**:
+    `GET /api/v1/pub-media/publication?pub=...`
 
-# bun
-bun run dev
-```
+## Developers
 
-## Production
+If you are a developer looking to contribute, modify, or run this project locally, please refer to the [Contributing Guide](CONTRIBUTING.md).
 
-Build the application for production:
+It covers:
+-   Setup and Installation
+-   Development Workflow
+-   Testing and Linting
+-   Coding Standards
 
-```bash
-# npm
-npm run build
+## License
 
-# pnpm
-pnpm build
-
-# yarn
-yarn build
-
-# bun
-bun run build
-```
-
-Locally preview production build:
-
-```bash
-# npm
-npm run preview
-
-# pnpm
-pnpm preview
-
-# yarn
-yarn preview
-
-# bun
-bun run preview
-```
-
-Check out the [deployment documentation](https://nuxt.com/docs/getting-started/deployment) for more information.
+This project is licensed under the MIT OR Apache-2.0 License. See [LICENSE](LICENSE) for details.
