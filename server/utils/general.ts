@@ -181,7 +181,6 @@ export const findBestImage = (images: MediaItem['images']) => {
 }
 
 /**
- * Finds the best image from a list of images.
  * Formats an issue number for a given year, month, and day.
  * @param year The year.
  * @param month The month.

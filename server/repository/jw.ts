@@ -13,11 +13,14 @@ export const jwRepository = {
    * @param locale The language of the languages.
    * @returns A list of languages.
    */
-  fetchLanguages: async (locale: JwLangSymbol) => {
-    const result = await $fetch<JwLanguageResult>(`/${locale}/languages/`, {
-      ...defaultFetchOptions
-    })
+  fetchLanguages: defineCachedFunction(
+    async (locale: JwLangSymbol) => {
+      const result = await $fetch<JwLanguageResult>(`/${locale}/languages/`, {
+        ...defaultFetchOptions
+      })
 
-    return result.languages
-  }
+      return result.languages
+    },
+    { maxAge: 60 * 60 * 24, name: 'jwRepository.fetchLanguages' }
+  )
 }

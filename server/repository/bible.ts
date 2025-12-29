@@ -13,31 +13,39 @@ export const bibleRepository = {
    * @param locale The language of the Bible.
    * @returns The chapter data.
    */
-  fetchBibleChapter: async (book: number, chapter: number, locale: JwLangSymbol) => {
-    const url = await scrapeBibleDataUrl(locale)
-    const startVerseId = generateVerseId(book, chapter, 1)
-    const endVerseId = generateVerseId(book, chapter, 999)
-    const range: `${number}-${number}` = `${startVerseId}-${endVerseId}`
+  fetchBibleChapter: defineCachedFunction(
+    async (book: number, chapter: number, locale: JwLangSymbol) => {
+      const url = await scrapeBibleDataUrl(locale)
+      const startVerseId = generateVerseId(book, chapter, 1)
+      const endVerseId = generateVerseId(book, chapter, 999)
+      const range: `${number}-${number}` = `${startVerseId}-${endVerseId}`
 
-    const result = await $fetch<BibleResult>(`${url}/${range}`, { ...defaultFetchOptions })
+      const result = await $fetch<BibleResult>(`${url}/${range}`, { ...defaultFetchOptions })
 
-    const chapterData = result.ranges?.[range]
+      const chapterData = result.ranges?.[range]
 
-    if (!chapterData) {
-      throw createNotFoundError('Could not find chapter data.', { book, chapter, locale })
-    }
+      if (!chapterData) {
+        throw createNotFoundError('Could not find chapter data.', { book, chapter, locale })
+      }
 
-    return chapterData
-  },
+      return chapterData
+    },
+    { maxAge: 60 * 60 * 24 * 30, name: 'bibleRepository.fetchBibleChapter' }
+  ),
+
   /**
    * Fetches information about the Bible.
    * @param locale The language of the Bible.
    * @returns The Bible data.
    */
-  fetchBibleData: async (locale: JwLangSymbol) => {
-    const url = await scrapeBibleDataUrl(locale)
-    return await $fetch<BibleResultEmpty>(url)
-  },
+  fetchBibleData: defineCachedFunction(
+    async (locale: JwLangSymbol) => {
+      const url = await scrapeBibleDataUrl(locale)
+      return await $fetch<BibleResultEmpty>(url)
+    },
+    { maxAge: 60 * 60 * 24 * 30, name: 'bibleRepository.fetchBibleData' }
+  ),
+
   /**
    * Fetches a verse of the Bible.
    * @param book The book number.
@@ -46,28 +54,28 @@ export const bibleRepository = {
    * @param locale The language of the Bible.
    * @returns The verse data.
    */
-  fetchBibleVerse: async (
-    book: number,
-    chapter: number,
-    verseNumber: number,
-    locale: JwLangSymbol
-  ) => {
-    const url = await scrapeBibleDataUrl(locale)
-    const verseId = generateVerseId(book, chapter, verseNumber)
+  fetchBibleVerse: defineCachedFunction(
+    async (book: number, chapter: number, verseNumber: number, locale: JwLangSymbol) => {
+      const url = await scrapeBibleDataUrl(locale)
+      const verseId = generateVerseId(book, chapter, verseNumber)
 
-    const result = await $fetch<BibleResultSingle>(`${url}/${verseId}`, { ...defaultFetchOptions })
-
-    const verse = result.ranges?.[verseId]?.verses?.[0]
-
-    if (!verse) {
-      throw createNotFoundError('Could not find verse data.', {
-        book,
-        chapter,
-        locale,
-        verseNumber
+      const result = await $fetch<BibleResultSingle>(`${url}/${verseId}`, {
+        ...defaultFetchOptions
       })
-    }
 
-    return verse
-  }
+      const verse = result.ranges?.[verseId]?.verses?.[0]
+
+      if (!verse) {
+        throw createNotFoundError('Could not find verse data.', {
+          book,
+          chapter,
+          locale,
+          verseNumber
+        })
+      }
+
+      return verse
+    },
+    { maxAge: 60 * 60 * 24 * 30, name: 'bibleRepository.fetchBibleVerse' }
+  )
 }

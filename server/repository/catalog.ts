@@ -20,6 +20,7 @@ export const catalogRepository = {
       responseType: 'stream'
     })
   },
+
   /**
    * Fetches the catalog manifest.
    * @returns The catalog manifest.
