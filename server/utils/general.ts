@@ -179,16 +179,21 @@ export const extractDateFromTitle = (
       const monthNr =
         new Date(`${startDay} ${startMonth ?? endMonth}${date ? '' + date.year : ''}`)?.getMonth() +
         1
-      const year = date
+      let year = date
         ? String(date.month > monthNr ? date.year + 1 : date.year)
         : new Date().getFullYear().toString()
+
+      const week = getWeekNumber(+startDay, monthNr, +year)
+      if (week === 1 && +startDay > +endDay) {
+        year = String(+year + 1)
+      }
 
       return {
         endDay: endDay!,
         endMonth: endMonth!,
         startDay: startDay!,
         startMonth: startMonth ?? endMonth!,
-        week: getWeekNumber(+startDay, monthNr, +year),
+        week,
         year
       }
     } else {
@@ -200,16 +205,21 @@ export const extractDateFromTitle = (
       const monthNr =
         new Date(`${startDay} ${startMonth ?? endMonth}${date ? '' + date.year : ''}`)?.getMonth() +
         1
-      const year = date
+      let year = date
         ? String(date.month > monthNr ? date.year + 1 : date.year)
         : new Date().getFullYear().toString()
+
+      const week = getWeekNumber(+startDay, monthNr, +year)
+      if (week === 1 && +startDay > +endDay) {
+        year = String(+year + 1)
+      }
 
       return {
         endDay: endDay!,
         endMonth: endMonth ?? startMonth!,
         startDay: startDay!,
         startMonth: startMonth!,
-        week: getWeekNumber(+startDay, monthNr, +year),
+        week,
         year
       }
     }
@@ -228,13 +238,14 @@ export const extractDateFromTitle = (
         match2
       const endDay = endDayWithMonth ?? endDayNoMonth
       const monthNr = new Date(`${startDay} ${startMonth ?? endMonth} ${year}`)?.getMonth() + 1
+      const week = getWeekNumber(+startDay, monthNr, +year)
 
       return {
         endDay: endDay!,
         endMonth: endMonth ?? startMonth!,
         startDay: startDay!,
         startMonth: startMonth!,
-        week: getWeekNumber(+startDay, monthNr, +year),
+        week,
         year: year!
       }
     } else {
@@ -242,13 +253,14 @@ export const extractDateFromTitle = (
       // Groups: 6=StartDay, 7=StartMonth?, 8=EndDay, 9=EndMonth, 10=Year
       const [, , , , , , startDay, startMonth, endDay, endMonth, year] = match2
       const monthNr = new Date(`${startDay} ${startMonth ?? endMonth} ${year}`)?.getMonth() + 1
+      const week = getWeekNumber(+startDay, monthNr, +year)
 
       return {
         endDay: endDay!,
         endMonth: endMonth!,
         startDay: startDay!,
         startMonth: startMonth ?? endMonth!,
-        week: getWeekNumber(+startDay, monthNr, +year),
+        week,
         year: year!
       }
     }
