@@ -77,7 +77,7 @@ export const mediatorRepository = {
 
       return result.languages
     },
-    { maxAge: 60 * 60 * 24, name: 'mediatorRepository.fetchLanguages' }
+    { maxAge: 60 * 60 * 24 * 30, name: 'mediatorRepository.fetchLanguages' }
   ),
 
   /**
@@ -125,6 +125,6 @@ export const mediatorRepository = {
       )
       return result.translations[locale]
     },
-    { maxAge: 60 * 60 * 24, name: 'mediatorRepository.fetchTranslations' }
+    { maxAge: 60 * 60 * 24 * 30, name: 'mediatorRepository.fetchTranslations' }
   )
 }

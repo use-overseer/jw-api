@@ -21,6 +21,6 @@ export const jwRepository = {
 
       return result.languages
     },
-    { maxAge: 60 * 60 * 24, name: 'jwRepository.fetchLanguages' }
+    { maxAge: 60 * 60 * 24 * 30, name: 'jwRepository.fetchLanguages' }
   )
 }
