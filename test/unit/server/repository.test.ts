@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { bibleRepository } from '../../../server/repository/bible'
+import { catalogRepository } from '../../../server/repository/catalog'
 import { jwRepository } from '../../../server/repository/jw'
 import { mediatorRepository } from '../../../server/repository/mediator'
 import { pubMediaRepository } from '../../../server/repository/pubMedia'
@@ -21,6 +22,42 @@ vi.stubGlobal('createNotFoundError', createNotFoundError)
 describe('repository utils', () => {
   beforeEach(() => {
     vi.resetAllMocks()
+  })
+
+  describe('catalogRepository.fetchCatalog', () => {
+    it('should fetch catalog stream', async () => {
+      const mockStream = { pipe: vi.fn() }
+      vi.mocked($fetch).mockResolvedValue(mockStream)
+      const id = '123'
+
+      const result = await catalogRepository.fetchCatalog(id)
+
+      expect(result).toEqual(mockStream)
+      expect($fetch).toHaveBeenCalledWith(
+        `/${id}/catalog.db.gz`,
+        expect.objectContaining({
+          baseURL: 'https://app.jw-cdn.org/catalogs/publications/v4',
+          responseType: 'stream'
+        })
+      )
+    })
+  })
+
+  describe('catalogRepository.fetchManifest', () => {
+    it('should fetch manifest', async () => {
+      const mockManifest = { current: 1 }
+      vi.mocked($fetch).mockResolvedValue(mockManifest)
+
+      const result = await catalogRepository.fetchManifest()
+
+      expect(result).toEqual(mockManifest)
+      expect($fetch).toHaveBeenCalledWith(
+        '/manifest.json',
+        expect.objectContaining({
+          baseURL: 'https://app.jw-cdn.org/catalogs/publications/v4'
+        })
+      )
+    })
   })
 
   describe('jwRepository.fetchLanguages', () => {
@@ -405,7 +442,7 @@ describe('repository utils', () => {
 
       expect(result).toEqual(mockChapter)
       expect(scrapeBibleDataUrl).toHaveBeenCalledWith(locale)
-      expect($fetch).toHaveBeenCalledWith(`${mockUrl}/${range}`)
+      expect($fetch).toHaveBeenCalledWith(`${mockUrl}/${range}`, {})
     })
 
     it('should throw error if chapter data is not found', async () => {
@@ -469,7 +506,7 @@ describe('repository utils', () => {
       const result = await bibleRepository.fetchBibleVerse(book, chapter, verseNumber, locale)
 
       expect(result).toEqual(mockVerse)
-      expect($fetch).toHaveBeenCalledWith(`${mockUrl}/${verseId}`)
+      expect($fetch).toHaveBeenCalledWith(`${mockUrl}/${verseId}`, {})
     })
 
     it('should throw error if verse data is not found', async () => {

@@ -41,7 +41,11 @@ export const zodToParams = (
 export const zodToRequestBody = (
   schema: z.ZodObject<any, any>
 ): NonNullable<Required<NitroRouteMeta>['openAPI']['requestBody']> => {
-  return { content: { 'application/json': createSchema(schema, { io: 'input' }).schema as any } }
+  return {
+    content: {
+      'application/json': { schema: createSchema(schema, { io: 'input' }).schema as any }
+    }
+  }
 }
 
 export const zodToResponses = (

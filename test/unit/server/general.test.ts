@@ -15,17 +15,40 @@ import {
   getStudyWatchtowerIssue,
   getWorkbookIssue,
   isJwLangCode,
-  isMediaKey
+  isJwLangSymbol,
+  isMediaKey,
+  langCodeToMepsId,
+  pad
 } from '../../../server/utils/general'
-import { jwLangCodes } from '../../../shared/types/lang.types'
+import { jwLangCodes, jwLangSymbols, mepsLanguageIds } from '../../../shared/types/lang.types'
 import { imageSizes, imageTypes } from '../../../shared/types/media.types'
 
 vi.stubGlobal('jwLangCodes', jwLangCodes)
+vi.stubGlobal('jwLangSymbols', jwLangSymbols)
+vi.stubGlobal('mepsLanguageIds', mepsLanguageIds)
 vi.stubGlobal('imageTypes', imageTypes)
 vi.stubGlobal('imageSizes', imageSizes)
 vi.stubGlobal('createBadRequestError', (message: string) => new Error(message))
 
 describe('jw general utils', () => {
+  describe('pad', () => {
+    it('should pad number with zeros by default', () => {
+      expect(pad(5)).toBe('05')
+    })
+
+    it('should pad string with zeros by default', () => {
+      expect(pad('5')).toBe('05')
+    })
+
+    it('should support custom length', () => {
+      expect(pad(5, 3)).toBe('005')
+    })
+
+    it('should support custom char', () => {
+      expect(pad(5, 2, ' ')).toBe(' 5')
+    })
+  })
+
   describe('isMediaKey', () => {
     it('should return true for docid-', () => {
       expect(isMediaKey('docid-123456')).toBe(true)
@@ -87,6 +110,21 @@ describe('jw general utils', () => {
 
     it('should return false for invalid codes', () => {
       expect(isJwLangCode('XYZ')).toBe(false)
+    })
+  })
+
+  describe('isJwLangSymbol', () => {
+    it('should return true for valid symbols', () => {
+      expect(isJwLangSymbol('en')).toBe(true)
+      expect(isJwLangSymbol('es')).toBe(true)
+    })
+
+    it('should return false for invalid symbols', () => {
+      expect(isJwLangSymbol('xyz')).toBe(false)
+    })
+
+    it('should return false for undefined', () => {
+      expect(isJwLangSymbol(undefined)).toBe(false)
     })
   })
 
@@ -191,6 +229,10 @@ describe('jw general utils', () => {
     it('should prioritize subtitles if requested', () => {
       expect(findBestFile(media, true)).toEqual(media[0]) // 480p has subtitles
     })
+
+    it('should fallback to highest resolution if no subtitles', () => {
+      expect(findBestFile(media.slice(1), true)).toEqual(media[1])
+    })
   })
 
   describe('findBestImage', () => {
@@ -276,6 +318,13 @@ describe('jw general utils', () => {
       expect(getWorkbookIssue({ month: 2, year: 2021 })).toBe('202101')
       expect(getWorkbookIssue({ month: 4, year: 2024 })).toBe('202403')
     })
+
+    it('should return the current issue for the current month', () => {
+      const today = new Date()
+      expect(getWorkbookIssue()).toBe(
+        getWorkbookIssue({ month: today.getMonth() + 1, year: today.getFullYear() })
+      )
+    })
   })
 
   describe('getStudyWatchtowerIssue', () => {
@@ -302,6 +351,25 @@ describe('jw general utils', () => {
     it('should return monthly issue for post-2016 years', () => {
       expect(getStudyWatchtowerIssue({ month: 1, year: 2016 })).toBe('201601')
       expect(getStudyWatchtowerIssue({ month: 12, year: 2024 })).toBe('202412')
+    })
+
+    it('should return the current issue for the current month', () => {
+      const today = new Date()
+      expect(getStudyWatchtowerIssue()).toBe(
+        getStudyWatchtowerIssue({ month: today.getMonth() + 1, year: today.getFullYear() })
+      )
+    })
+  })
+
+  describe('langCodeToMepsId', () => {
+    it('should return correct MEPS ID for known language code', () => {
+      expect(langCodeToMepsId('E')).toBe(0)
+      expect(langCodeToMepsId('S')).toBe(1)
+    })
+
+    it('should return 0 for unknown language code', () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      expect(langCodeToMepsId('XYZ' as any)).toBe(0)
     })
   })
 })

@@ -8,7 +8,7 @@ import { mediatorRepository } from '#server/repository/mediator'
 const getMediaWithSubtitles = async (publication: MediaFetcher) => {
   const video = await mediatorRepository.fetchMediaItem(publication)
 
-  const bestMatch = findBestFile(video?.files ?? [], true)
+  const bestMatch = findBestFile(video.files, true)
 
   if (!bestMatch) throw createNotFoundError('No media file with subtitles found.')
 
