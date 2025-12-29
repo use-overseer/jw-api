@@ -255,7 +255,7 @@ describe('jw general utils', () => {
 
     // 3. "Title (Month StartDay-EndDay)"
     it('should extract date from title with format "Title (Month StartDay-EndDay)"', () => {
-      expect(extractDateFromTitle('Meeting (January 1-7)')).toEqual({
+      expect(extractDateFromTitle('Meeting (January 1–7)')).toEqual({
         endDay: '7',
         endMonth: 'January',
         startDay: '1',

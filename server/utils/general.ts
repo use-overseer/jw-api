@@ -156,16 +156,18 @@ export const getStudyWatchtowerIssue = (date?: { month: number; year: number }):
 }
 
 export const extractDateFromTitle = (
-  title: string
+  title: string,
+  date?: { month: number; year: number }
 ): null | {
   endDay: string
   endMonth: string
   startDay: string
   startMonth: string
+  week?: number
   year?: string
 } => {
   const match = title.match(
-    /\((?:(\d+)(?:\s+([^-]+))?-(\d+)\s+([A-Za-z]+)|([A-Za-z]+)\s+(\d+)(?:-([A-Za-z]+)\s+(\d+)|-(\d+)))\)$/
+    /\((?:(\d+)(?:\s+([^-–]+))?[-–](\d+)\s+([A-Za-z]+)|([A-Za-z]+)\s+(\d+)(?:[-–]([A-Za-z]+)\s+(\d+)|[-–](\d+)))\)$/
   )
 
   if (match) {
@@ -173,29 +175,49 @@ export const extractDateFromTitle = (
       // Format: (StartDay[-StartMonth]-EndDay EndMonth)
       // Groups: 1=StartDay, 2=StartMonth?, 3=EndDay, 4=EndMonth
       const [, startDay, startMonth, endDay, endMonth] = match
+
+      const monthNr =
+        new Date(`${startDay} ${startMonth ?? endMonth}${date ? '' + date.year : ''}`)?.getMonth() +
+        1
+      const year = date
+        ? String(date.month > monthNr ? date.year + 1 : date.year)
+        : new Date().getFullYear().toString()
+
       return {
         endDay: endDay!,
         endMonth: endMonth!,
         startDay: startDay!,
-        startMonth: startMonth ?? endMonth!
+        startMonth: startMonth ?? endMonth!,
+        week: getWeekNumber(+startDay, monthNr, +year),
+        year
       }
     } else {
       // Format: (StartMonth StartDay-[EndMonth] EndDay)
       // Groups: 5=StartMonth, 6=StartDay, 7=EndMonth?, 8=EndDay(with month), 9=EndDay(no month)
       const [, , , , , startMonth, startDay, endMonth, endDayWithMonth, endDayNoMonth] = match
       const endDay = endDayWithMonth ?? endDayNoMonth
+
+      const monthNr =
+        new Date(`${startDay} ${startMonth ?? endMonth}${date ? '' + date.year : ''}`)?.getMonth() +
+        1
+      const year = date
+        ? String(date.month > monthNr ? date.year + 1 : date.year)
+        : new Date().getFullYear().toString()
+
       return {
         endDay: endDay!,
         endMonth: endMonth ?? startMonth!,
         startDay: startDay!,
-        startMonth: startMonth!
+        startMonth: startMonth!,
+        week: getWeekNumber(+startDay, monthNr, +year),
+        year
       }
     }
   }
 
   // Matches "January 10-12, 2024: Title" or "10-12 January 2024: Title"
   const match2 = title.match(
-    /^(?:([A-Za-z]+)\s+(\d+)(?:-([A-Za-z]+)\s+(\d+)|-(\d+))|(\d+)(?:\s+([A-Za-z]+))?-(\d+)\s+([A-Za-z]+)),?\s+(\d{4}):/
+    /^(?:([A-Za-z]+)\s+(\d+)(?:[-–]([A-Za-z]+)\s+(\d+)|[-–](\d+))|(\d+)(?:\s+([A-Za-z]+))?[-–](\d+)\s+([A-Za-z]+)),?\s+(\d{4}):/
   )
 
   if (match2) {
@@ -205,22 +227,28 @@ export const extractDateFromTitle = (
       const [, startMonth, startDay, endMonth, endDayWithMonth, endDayNoMonth, , , , , year] =
         match2
       const endDay = endDayWithMonth ?? endDayNoMonth
+      const monthNr = new Date(`${startDay} ${startMonth ?? endMonth} ${year}`)?.getMonth() + 1
+
       return {
         endDay: endDay!,
         endMonth: endMonth ?? startMonth!,
         startDay: startDay!,
         startMonth: startMonth!,
+        week: getWeekNumber(+startDay, monthNr, +year),
         year: year!
       }
     } else {
       // Format: StartDay [StartMonth]-EndDay EndMonth
       // Groups: 6=StartDay, 7=StartMonth?, 8=EndDay, 9=EndMonth, 10=Year
       const [, , , , , , startDay, startMonth, endDay, endMonth, year] = match2
+      const monthNr = new Date(`${startDay} ${startMonth ?? endMonth} ${year}`)?.getMonth() + 1
+
       return {
         endDay: endDay!,
         endMonth: endMonth!,
         startDay: startDay!,
         startMonth: startMonth ?? endMonth!,
+        week: getWeekNumber(+startDay, monthNr, +year),
         year: year!
       }
     }
