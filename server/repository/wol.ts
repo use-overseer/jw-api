@@ -8,6 +8,12 @@ const defaultFetchOptions = {
   baseURL: 'https://wol.jw.org'
 } satisfies FetchOptions
 
+/**
+ * Fetches the information about a yeartext.
+ * @param wtlocale The language of the yeartext.
+ * @param year The year of the yeartext.
+ * @returns The information about the yeartext.
+ */
 const fetchYeartextResult = async (wtlocale: JwLangCode, year: number) => {
   const result = await $fetch<YeartextResult>(`/wol/finder`, {
     ...defaultFetchOptions,
@@ -19,11 +25,26 @@ const fetchYeartextResult = async (wtlocale: JwLangCode, year: number) => {
   return result
 }
 
+/**
+ * Repository for WOL resources.
+ */
 export const wolRepository = {
+  /**
+   * Fetches the yeartext for a given year.
+   * @param wtlocale The language of the yeartext.
+   * @param year The year of the yeartext.
+   * @returns The yeartext content.
+   */
   fetchYeartext: async (wtlocale: JwLangCode, year: number) => {
     const result = await fetchYeartextResult(wtlocale, year)
     return result.content
   },
+  /**
+   * Fetches the details of a yeartext.
+   * @param wtlocale The language of the yeartext.
+   * @param year The year of the yeartext.
+   * @returns The details of the yeartext.
+   */
   fetchYeartextDetails: async (wtlocale: JwLangCode, year: number) => {
     const key = getYeartextKey(wtlocale, year)
     if (yeartextUrls.has(key)) {

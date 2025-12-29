@@ -1,6 +1,15 @@
 import { jwRepository } from '#server/repository/jw'
 
+/**
+ * A service wrapping the JW repository.
+ */
 export const jwService = {
+  /**
+   * Gets the languages for a given locale.
+   * @param locale The locale to get the languages for. Defaults to English.
+   * @param webOnly Whether to only return languages with web content. Defaults to true.
+   * @returns The languages.
+   */
   getLanguages: async (locale: JwLangSymbol = 'en', webOnly = true) => {
     const result = await jwRepository.fetchLanguages(locale)
 

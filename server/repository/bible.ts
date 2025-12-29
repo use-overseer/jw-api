@@ -1,12 +1,25 @@
+import type { FetchOptions } from 'ofetch'
+
+const defaultFetchOptions = {} satisfies FetchOptions
+
+/**
+ * Repository for Bible resources.
+ */
 export const bibleRepository = {
+  /**
+   * Fetches a chapter of the Bible.
+   * @param book The book number.
+   * @param chapter The chapter number.
+   * @param locale The language of the Bible.
+   * @returns The chapter data.
+   */
   fetchBibleChapter: async (book: number, chapter: number, locale: JwLangSymbol) => {
     const url = await scrapeBibleDataUrl(locale)
-
     const startVerseId = generateVerseId(book, chapter, 1)
     const endVerseId = generateVerseId(book, chapter, 999)
     const range: `${number}-${number}` = `${startVerseId}-${endVerseId}`
 
-    const result = await $fetch<BibleResult>(`${url}/${range}`)
+    const result = await $fetch<BibleResult>(`${url}/${range}`, { ...defaultFetchOptions })
 
     const chapterData = result.ranges?.[range]
 
@@ -16,13 +29,23 @@ export const bibleRepository = {
 
     return chapterData
   },
+  /**
+   * Fetches information about the Bible.
+   * @param locale The language of the Bible.
+   * @returns The Bible data.
+   */
   fetchBibleData: async (locale: JwLangSymbol) => {
     const url = await scrapeBibleDataUrl(locale)
-
-    const result = await $fetch<BibleResultEmpty>(url)
-
-    return result
+    return await $fetch<BibleResultEmpty>(url)
   },
+  /**
+   * Fetches a verse of the Bible.
+   * @param book The book number.
+   * @param chapter The chapter number.
+   * @param verseNumber The verse number.
+   * @param locale The language of the Bible.
+   * @returns The verse data.
+   */
   fetchBibleVerse: async (
     book: number,
     chapter: number,
@@ -30,10 +53,9 @@ export const bibleRepository = {
     locale: JwLangSymbol
   ) => {
     const url = await scrapeBibleDataUrl(locale)
-
     const verseId = generateVerseId(book, chapter, verseNumber)
 
-    const result = await $fetch<BibleResultSingle>(`${url}/${verseId}`)
+    const result = await $fetch<BibleResultSingle>(`${url}/${verseId}`, { ...defaultFetchOptions })
 
     const verse = result.ranges?.[verseId]?.verses?.[0]
 

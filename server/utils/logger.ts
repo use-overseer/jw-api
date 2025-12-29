@@ -5,6 +5,9 @@ const getLogger = (): {
   warn: (msg: string) => void
 } => asyncLocalStorage.getStore()?.logger ?? console
 
+/**
+ * The global logger instance.
+ */
 export const logger = {
   debug: (msg: string) => getLogger().debug(msg),
   error: (msg: string) => getLogger().error(msg),

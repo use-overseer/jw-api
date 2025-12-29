@@ -1,7 +1,27 @@
+/**
+ * Pads a value with a character.
+ * @param value The value to pad.
+ * @param length The length of the padded value. Defaults to 2.
+ * @param char The character to pad with. Defaults to '0'.
+ * @returns The padded value.
+ */
+export const pad = (value: number | string, length = 2, char = '0') =>
+  value.toString().padStart(length, char)
+
+/**
+ * Checks if a string is a media key.
+ * @param input The string to check.
+ * @returns True if the string is a media key, false otherwise.
+ */
 export const isMediaKey = (input?: string): input is MediaKey => {
   return !!input && (input.startsWith('docid-') || input.startsWith('pub-'))
 }
 
+/**
+ * Generates a media key for a given publication.
+ * @param publication The publication to generate the media key for.
+ * @returns The media key.
+ */
 export const generateMediaKey = (
   publication: PublicationDocFetcher | PublicationFetcher
 ): MediaKey => {
@@ -24,10 +44,29 @@ export const generateMediaKey = (
     .join('_') as MediaKey
 }
 
+/**
+ * Checks if a string is a JW language code.
+ * @param input The string to check.
+ * @returns True if the string is a JW language code, false otherwise.
+ */
 export const isJwLangCode = (input: string): input is JwLangCode => {
   return jwLangCodes.includes(input as JwLangCode)
 }
 
+/**
+ * Checks if a string is a JW language symbol.
+ * @param input The string to check.
+ * @returns True if the string is a JW language symbol, false otherwise.
+ */
+export const isJwLangSymbol = (input?: string): input is JwLangSymbol => {
+  return !!input && jwLangSymbols.includes(input as JwLangSymbol)
+}
+
+/**
+ * Extracts a language code from a string.
+ * @param input The string to extract the language code from.
+ * @returns The language code.
+ */
 export const extractLangCode = (input: string): JwLangCode | null => {
   if (isJwLangCode(input)) return input
 
@@ -49,6 +88,11 @@ export const extractLangCode = (input: string): JwLangCode | null => {
   }
 }
 
+/**
+ * Extracts a media key from a string.
+ * @param input The string to extract the media key from.
+ * @returns The media key.
+ */
 export const extractMediaKey = (input: string): MediaKey | null => {
   if (isMediaKey(input)) return input
 
@@ -79,20 +123,34 @@ export const extractMediaKey = (input: string): MediaKey | null => {
   }
 }
 
-export const generateVerseId = (
-  book: number,
-  chapter: number,
-  verseNumber: number
-): `${number}` => {
-  return `${book}${chapter.toString().padStart(3, '0')}${verseNumber.toString().padStart(3, '0')}` as `${number}`
+/**
+ * Generates a verse ID for a given book, chapter, and verse number.
+ * @param book The book number.
+ * @param chapter The chapter number.
+ * @param verse The verse number.
+ * @returns The verse ID.
+ */
+export const generateVerseId = (book: number, chapter: number, verse: number): `${number}` => {
+  return `${book}${pad(chapter, 3)}${pad(verse, 3)}` as `${number}`
 }
 
+/**
+ * Extracts the resolution from a media item file.
+ * @param file The media item file to extract the resolution from.
+ * @returns The resolution.
+ */
 export const extractResolution = (file: MediaItemFile): number => {
   const resolution = file.label.match(/(\d+)p/)?.[1]
   if (!resolution) return 0
   return parseInt(resolution)
 }
 
+/**
+ * Finds the best file from a list of media item files.
+ * @param media The media item files to find the best file from.
+ * @param withSubtitles Whether to include files with subtitles. Defaults to false.
+ * @returns The best file.
+ */
 export const findBestFile = (
   media: MediaItemFile[],
   withSubtitles = false
@@ -100,10 +158,18 @@ export const findBestFile = (
   if (media.length === 0) return null
   if (media.length === 1) return media[0]!
 
+  // Sort the media item files by resolution, descending.
   const sorted = [...media].sort((a, b) => extractResolution(b) - extractResolution(a))
+
+  // If subtitles are requested, return the first file with subtitles. Otherwise, return the highest resolution file.
   return withSubtitles ? (sorted.find((file) => file.subtitles) ?? sorted[0]!) : sorted[0]!
 }
 
+/**
+ * Finds the best image from a list of images.
+ * @param images The images to find the best image from.
+ * @returns The best image.
+ */
 export const findBestImage = (images: MediaItem['images']) => {
   for (const type of imageTypes) {
     for (const size of imageSizes) {
@@ -114,12 +180,28 @@ export const findBestImage = (images: MediaItem['images']) => {
   return null
 }
 
+/**
+ * Formats an issue number for a given year, month, and day.
+ * @param year The year.
+ * @param month The month.
+ * @param day The day.
+ * @returns The formatted issue number.
+ */
 export const formatIssue = (year: number, month: number, day?: number) =>
-  `${year}${month.toString().padStart(2, '0')}${day?.toString().padStart(2, '0') ?? ''}` as `${number}`
+  `${year}${pad(month)}${day ? pad(day) : ''}` as `${number}`
 
+/**
+ * Gets the workbook issue for a given date.
+ * @param date The date to get the workbook issue for. Defaults to the current date.
+ * @returns The workbook issue.
+ */
 export const getWorkbookIssue = (date?: { month: number; year: number }): `${number}` => {
-  const year = date?.year ?? new Date().getFullYear()
-  const month = date?.month ?? new Date().getMonth() + 1
+  if (!date) {
+    const today = new Date()
+    date = { month: today.getMonth() + 1, year: today.getFullYear() }
+  }
+
+  const { month, year } = date
 
   if (year < 2016) {
     throw createBadRequestError('Workbooks are not available before 2016.')
@@ -136,9 +218,18 @@ export const getWorkbookIssue = (date?: { month: number; year: number }): `${num
   return month % 2 === 0 ? formatIssue(year, month - 1) : formatIssue(year, month)
 }
 
+/**
+ * Gets the study watchtower issue for a given date.
+ * @param date The date to get the study watchtower issue for. Defaults to the current date.
+ * @returns The study watchtower issue.
+ */
 export const getStudyWatchtowerIssue = (date?: { month: number; year: number }): `${number}` => {
-  const year = date?.year ?? new Date().getFullYear()
-  const month = date?.month ?? new Date().getMonth() + 1
+  if (!date) {
+    const today = new Date()
+    date = { month: today.getMonth() + 1, year: today.getFullYear() }
+  }
+
+  const { month, year } = date
 
   if (year < 2008) {
     throw createBadRequestError('Study watchtower is not available before 2008.')
@@ -155,116 +246,13 @@ export const getStudyWatchtowerIssue = (date?: { month: number; year: number }):
   return formatIssue(year, month)
 }
 
-export const extractDateFromTitle = (
-  title: string,
-  date?: { month: number; year: number }
-): null | {
-  endDay: string
-  endMonth: string
-  startDay: string
-  startMonth: string
-  week?: number
-  year?: string
-} => {
-  const match = title.match(
-    /\((?:(\d+)(?:\s+([^-–]+))?[-–](\d+)\s+([A-Za-z]+)|([A-Za-z]+)\s+(\d+)(?:[-–]([A-Za-z]+)\s+(\d+)|[-–](\d+)))\)$/
+/**
+ * Converts a language code to a MEPS ID.
+ * @param lang The language code to convert.
+ * @returns The MEPS ID.
+ */
+export const langCodeToMepsId = (lang: JwLangCode): number => {
+  return parseInt(
+    Object.entries(mepsLanguageIds).find(([, langcode]) => langcode === lang)?.[0] ?? '0'
   )
-
-  if (match) {
-    if (match[1]) {
-      // Format: (StartDay[-StartMonth]-EndDay EndMonth)
-      // Groups: 1=StartDay, 2=StartMonth?, 3=EndDay, 4=EndMonth
-      const [, startDay, startMonth, endDay, endMonth] = match
-
-      const monthNr =
-        new Date(`${startDay} ${startMonth ?? endMonth}${date ? '' + date.year : ''}`)?.getMonth() +
-        1
-      let year = date
-        ? String(date.month > monthNr ? date.year + 1 : date.year)
-        : new Date().getFullYear().toString()
-
-      const week = getWeekNumber(+startDay, monthNr, +year)
-      if (week === 1 && +startDay > +endDay) {
-        year = String(+year + 1)
-      }
-
-      return {
-        endDay: endDay!,
-        endMonth: endMonth!,
-        startDay: startDay!,
-        startMonth: startMonth ?? endMonth!,
-        week,
-        year
-      }
-    } else {
-      // Format: (StartMonth StartDay-[EndMonth] EndDay)
-      // Groups: 5=StartMonth, 6=StartDay, 7=EndMonth?, 8=EndDay(with month), 9=EndDay(no month)
-      const [, , , , , startMonth, startDay, endMonth, endDayWithMonth, endDayNoMonth] = match
-      const endDay = endDayWithMonth ?? endDayNoMonth
-
-      const monthNr =
-        new Date(`${startDay} ${startMonth ?? endMonth}${date ? '' + date.year : ''}`)?.getMonth() +
-        1
-      let year = date
-        ? String(date.month > monthNr ? date.year + 1 : date.year)
-        : new Date().getFullYear().toString()
-
-      const week = getWeekNumber(+startDay, monthNr, +year)
-      if (week === 1 && +startDay > +endDay) {
-        year = String(+year + 1)
-      }
-
-      return {
-        endDay: endDay!,
-        endMonth: endMonth ?? startMonth!,
-        startDay: startDay!,
-        startMonth: startMonth!,
-        week,
-        year
-      }
-    }
-  }
-
-  // Matches "January 10-12, 2024: Title" or "10-12 January 2024: Title"
-  const match2 = title.match(
-    /^(?:([A-Za-z]+)\s+(\d+)(?:[-–]([A-Za-z]+)\s+(\d+)|[-–](\d+))|(\d+)(?:\s+([A-Za-z]+))?[-–](\d+)\s+([A-Za-z]+)),?\s+(\d{4}):/
-  )
-
-  if (match2) {
-    if (match2[1]) {
-      // Format: Month StartDay-[EndMonth] EndDay
-      // Groups: 1=StartMonth, 2=StartDay, 3=EndMonth?, 4=EndDay(with month), 5=EndDay(no month), 10=Year
-      const [, startMonth, startDay, endMonth, endDayWithMonth, endDayNoMonth, , , , , year] =
-        match2
-      const endDay = endDayWithMonth ?? endDayNoMonth
-      const monthNr = new Date(`${startDay} ${startMonth ?? endMonth} ${year}`)?.getMonth() + 1
-      const week = getWeekNumber(+startDay, monthNr, +year)
-
-      return {
-        endDay: endDay!,
-        endMonth: endMonth ?? startMonth!,
-        startDay: startDay!,
-        startMonth: startMonth!,
-        week,
-        year: year!
-      }
-    } else {
-      // Format: StartDay [StartMonth]-EndDay EndMonth
-      // Groups: 6=StartDay, 7=StartMonth?, 8=EndDay, 9=EndMonth, 10=Year
-      const [, , , , , , startDay, startMonth, endDay, endMonth, year] = match2
-      const monthNr = new Date(`${startDay} ${startMonth ?? endMonth} ${year}`)?.getMonth() + 1
-      const week = getWeekNumber(+startDay, monthNr, +year)
-
-      return {
-        endDay: endDay!,
-        endMonth: endMonth!,
-        startDay: startDay!,
-        startMonth: startMonth ?? endMonth!,
-        week,
-        year: year!
-      }
-    }
-  }
-
-  return null
 }

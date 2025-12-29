@@ -1,13 +1,26 @@
 import { wolRepository } from '#server/repository/wol'
 import { parse } from 'node-html-parser'
 
+/**
+ * A service wrapping the WOL repository.
+ */
 export const wolService = {
-  getYeartext: async (locale: JwLangCode, year?: number) => {
-    const result = await wolRepository.fetchYeartext(locale, year ?? new Date().getFullYear())
-
-    return result
+  /**
+   * Gets the yeartext for a given locale and year.
+   * @param locale The locale to get the yeartext for. Defaults to English.
+   * @param year The year to get the yeartext for. Defaults to the current year.
+   * @returns The yeartext.
+   */
+  getYeartext: async (locale: JwLangCode = 'E', year?: number) => {
+    return await wolRepository.fetchYeartext(locale, year ?? new Date().getFullYear())
   },
-  getYeartextDetails: async (locale: JwLangCode, year?: number) => {
+  /**
+   * Gets the yeartext details for a given locale and year.
+   * @param locale The locale to get the yeartext details for. Defaults to English.
+   * @param year The year to get the yeartext details for. Defaults to the current year.
+   * @returns The yeartext details.
+   */
+  getYeartextDetails: async (locale: JwLangCode = 'E', year?: number) => {
     const usedYear = year ?? new Date().getFullYear()
 
     const result = await wolRepository.fetchYeartextDetails(locale, usedYear)

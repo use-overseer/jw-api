@@ -54,7 +54,7 @@ describe('pubMedia utils', () => {
     })
   })
 
-  describe('getWorkbook', () => {
+  describe('getMeetingWorkbook', () => {
     it('should call fetchPublication with correct params', async () => {
       const date = { month: 1, year: 2024 }
       const langwritten = 'E'
@@ -65,7 +65,7 @@ describe('pubMedia utils', () => {
       const mockResult = { issue, pub: 'mwb' }
       vi.mocked(pubMediaRepository.fetchPublication).mockResolvedValue(mockResult)
 
-      const result = await pubMediaService.getWorkbook(langwritten, date)
+      const result = await pubMediaService.getMeetingWorkbook(langwritten, date)
 
       expect(result).toEqual(mockResult)
       expect(getWorkbookIssueMock).toHaveBeenCalledWith(date)

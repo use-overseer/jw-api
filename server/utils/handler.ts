@@ -2,6 +2,11 @@ import type { EventHandler, EventHandlerRequest } from 'h3'
 import type pino from 'pino'
 import type { output } from 'zod'
 
+/**
+ * A helper function to define an event handler that logs requests and errors.
+ * @param handler The event handler to wrap.
+ * @returns The wrapped event handler.
+ */
 export const defineLoggedEventHandler = <
   D extends {
     _zod: {

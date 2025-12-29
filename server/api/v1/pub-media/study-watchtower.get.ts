@@ -17,7 +17,7 @@ export default defineLoggedEventHandler(async (event) => {
   const { langwritten, month, year } = await getValidatedQuery(event, querySchema.parse)
 
   if (!!month !== !!year) {
-    throw createBadRequestError('Either month and year must be provided or neither.')
+    throw createBadRequestError('Month and year must be provided together or not at all.')
   }
 
   const result = await pubMediaService.getStudyWatchtower(

@@ -12,6 +12,9 @@ const prompt = (role: 'assistant' | 'user', text: string) => ({
   messages: [{ content: { text, type: 'text' as const }, role }]
 })
 
+/**
+ * A service providing MCP utilities.
+ */
 export const mcpService = {
   assistantPrompt: (text: string) => prompt('assistant', text),
 
