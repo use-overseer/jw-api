@@ -501,13 +501,13 @@ const rtfToText = (text: string, encoding: Encoding = 'windows-1252') => {
   let out = ''
 
   // Parse font table
-  let fontMatch
+  let fontMatch: null | RegExpExecArray = null
   while ((fontMatch = FONTTABLE.exec(text)) !== null) {
     const [, fontId, fcharset, fontName] = fontMatch
-    fonttbl[fontId] = {
-      charset: fcharset,
-      encoding: CHARSET_MAP[parseInt(fcharset)] || encoding,
-      name: fontName.trim()
+    fonttbl[fontId ?? 'default'] = {
+      charset: fcharset ?? '0',
+      encoding: CHARSET_MAP[parseInt(fcharset ?? '0')] || encoding,
+      name: fontName?.trim() ?? 'default'
     }
   }
 
@@ -515,7 +515,7 @@ const rtfToText = (text: string, encoding: Encoding = 'windows-1252') => {
   PATTERN.lastIndex = 0
 
   // Parse RTF
-  let match
+  let match: null | RegExpExecArray = null
   while ((match = PATTERN.exec(text)) !== null) {
     const [, word, arg, hex, char, brace, tchar] = match
 
@@ -577,9 +577,9 @@ const rtfToText = (text: string, encoding: Encoding = 'windows-1252') => {
         }
       } else if (word === 'f') {
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        currentFont = arg
+        currentFont = arg ?? null
       } else if (word === 'deff') {
-        defaultFont = arg
+        defaultFont = arg ?? null
       } else if (word === 'fonttbl') {
         suppressOutput = true
       } else if (word === 'colortbl') {
@@ -638,7 +638,7 @@ const removePictGroups = (rtfText: string): string => {
       if (rtfText.substring(i, i + 4) === '\\bin') {
         i += 4
         let lengthStr = ''
-        while (i < n && /\d/.test(rtfText[i])) {
+        while (i < n && /\d/.test(rtfText[i]!)) {
           lengthStr += rtfText[i]
           i++
         }
