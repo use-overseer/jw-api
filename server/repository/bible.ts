@@ -1,3 +1,7 @@
+import { pubMediaRepository } from '#server/repository/pubMedia'
+import { langSymbolToCode } from '#server/utils/general'
+import { parseRTFBible } from '#server/utils/rtf'
+
 /**
  * Repository for Bible resources using RTF files from pub-media.
  */
@@ -10,8 +14,8 @@ export const bibleRepository = {
    */
   fetchBibleBookRTF: defineCachedFunction(
     async (book: number, locale: JwLangSymbol) => {
-      const langCode = locale.toUpperCase()
-      
+      const langCode = await langSymbolToCode(locale)
+
       const publication = await pubMediaRepository.fetchPublication({
         booknum: book,
         langwritten: langCode,
@@ -30,46 +34,10 @@ export const bibleRepository = {
 
       const rtfContent = await $fetch<string>(rtfUrl, { responseType: 'text' })
       const plainText = parseRTF(rtfContent)
-      
+
       return plainText
     },
     { maxAge: 60 * 60 * 24 * 30, name: 'bibleRepository.fetchBibleBookRTF' }
-  ),
-
-  /**
-   * Fetches information about the Bible books.
-   * @param locale The language of the Bible.
-   * @returns The Bible books data.
-   */
-  fetchBibleData: defineCachedFunction(
-    async (locale: JwLangSymbol) => {
-      const langCode = locale.toUpperCase()
-      
-      const books = []
-      for (let bookNum = 1; bookNum <= 66; bookNum++) {
-        try {
-          const publication = await pubMediaRepository.fetchPublication({
-            booknum: bookNum,
-            langwritten: langCode,
-            pub: 'nwt'
-          })
-          
-          const rtfFiles = publication.files?.[langCode]?.RTF
-          if (rtfFiles && rtfFiles.length > 0) {
-            books.push({
-              bookNum,
-              name: rtfFiles[0]?.title || `Book ${bookNum}`,
-              standardName: publication.pubName || `Book ${bookNum}`
-            })
-          }
-        } catch {
-          continue
-        }
-      }
-      
-      return { editionData: { books } }
-    },
-    { maxAge: 60 * 60 * 24 * 30, name: 'bibleRepository.fetchBibleData' }
   ),
 
   /**
@@ -81,18 +49,97 @@ export const bibleRepository = {
    */
   fetchBibleChapter: defineCachedFunction(
     async (book: number, chapter: number, locale: JwLangSymbol) => {
-      const fullText = await bibleRepository.fetchBibleBookRTF(book, locale)
-      
-      const chapterPattern = new RegExp(`${chapter}\\s+([^\\d][\\s\\S]*?)(?=${chapter + 1}\\s+|$)`, 'i')
-      const match = fullText.match(chapterPattern)
-      
-      if (!match || !match[1]) {
+      const langCode = await langSymbolToCode(locale)
+
+      const publication = await pubMediaRepository.fetchPublication({
+        booknum: book,
+        langwritten: langCode,
+        pub: 'nwt'
+      })
+
+      const rtfFiles = publication.files?.[langCode]?.RTF
+      if (!rtfFiles || rtfFiles.length === 0) {
+        throw createNotFoundError('RTF file not found for this book.', { book, locale })
+      }
+
+      const rtfUrl = rtfFiles[0]?.file?.url
+      if (!rtfUrl) {
+        throw createNotFoundError('RTF URL not found.', { book, locale })
+      }
+
+      const rtfContent = await $fetch<string>(rtfUrl, { responseType: 'text' })
+      const chapters = parseRTFBible(rtfContent)
+
+      const chapterData = chapters.find((c) => c.chapter === chapter)
+
+      if (!chapterData) {
         throw createNotFoundError('Chapter not found in RTF.', { book, chapter, locale })
       }
-      
-      return { content: match[1].trim() }
+
+      return {
+        chapter: chapterData.chapter,
+        verses: chapterData.verses
+      }
     },
     { maxAge: 60 * 60 * 24 * 30, name: 'bibleRepository.fetchBibleChapter' }
+  ),
+
+  /**
+   * Fetches information about the Bible books.
+   * @param locale The language of the Bible.
+   * @param includeContent Whether to include full RTF content parsed (default: true for backward compatibility).
+   * @returns The Bible books data.
+   */
+  fetchBibleData: defineCachedFunction(
+    async (locale: JwLangSymbol, includeContent: boolean = true) => {
+      const langCode = await langSymbolToCode(locale)
+
+      // Obtener dinámicamente todos los libros desde pub-media en paralelo
+      const bookPromises = Array.from({ length: 66 }, (_, i) => i + 1).map(async (bookNum) => {
+        try {
+          const publication = await pubMediaRepository.fetchPublication({
+            booknum: bookNum,
+            langwritten: langCode,
+            pub: 'nwt'
+          })
+
+          const rtfFiles = publication.files?.[langCode]?.RTF
+          if (rtfFiles && rtfFiles.length > 0) {
+            const rtfUrl = rtfFiles[0]?.file?.url
+
+            const baseData = {
+              bookNum,
+              name: rtfFiles[0]?.title || `Book ${bookNum}`,
+              rtfUrl,
+              standardName: publication.pubName || `Book ${bookNum}`
+            }
+
+            if (!rtfUrl || !includeContent) {
+              return { ...baseData, chapters: [] }
+            }
+
+            // Descargar y parsear el RTF
+            const rtfContent = await $fetch<string>(rtfUrl, { responseType: 'text' })
+            const chapters = parseRTFBible(rtfContent)
+
+            return {
+              ...baseData,
+              chapters
+            }
+          }
+          return null
+        } catch (error) {
+          console.error(`Error fetching book ${bookNum}:`, error)
+          return null
+        }
+      })
+
+      const results = await Promise.all(bookPromises)
+      const books = results.filter((book) => book !== null)
+
+      return { editionData: { books } }
+    },
+    { maxAge: 60 * 60 * 24 * 30, name: 'bibleRepository.fetchBibleData' }
   ),
 
   /**
@@ -106,15 +153,23 @@ export const bibleRepository = {
   fetchBibleVerse: defineCachedFunction(
     async (book: number, chapter: number, verseNumber: number, locale: JwLangSymbol) => {
       const chapterData = await bibleRepository.fetchBibleChapter(book, chapter, locale)
-      
-      const versePattern = new RegExp(`${verseNumber}\\s+([^\\d][^\\n]*?)(?=\\s*${verseNumber + 1}\\s+|$)`, 'i')
-      const match = chapterData.content.match(versePattern)
-      
-      if (!match || !match[1]) {
-        throw createNotFoundError('Verse not found in chapter.', { book, chapter, verseNumber, locale })
+
+      const verse = chapterData.verses.find((v) => v.verse === verseNumber)
+
+      if (!verse) {
+        throw createNotFoundError('Verse not found in chapter.', {
+          book,
+          chapter,
+          locale,
+          verseNumber
+        })
       }
-      
-      return { content: match[1].trim() }
+
+      return {
+        chapter: chapterData.chapter,
+        text: verse.text,
+        verse: verse.verse
+      }
     },
     { maxAge: 60 * 60 * 24 * 30, name: 'bibleRepository.fetchBibleVerse' }
   )
