@@ -3,7 +3,7 @@ import { existsSync } from 'node:fs'
 import { mkdir } from 'node:fs/promises'
 import { Readable } from 'node:stream'
 
-const CATALOG_FOLDER = './.data'
+const CATALOG_FOLDER = '/tmp/.data'
 const CATALOG_PATH = CATALOG_FOLDER + '/catalog.sqlite'
 const CATALOG_VERSION_KEY = 'catalog_version'
 
