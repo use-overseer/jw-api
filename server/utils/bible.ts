@@ -26,7 +26,8 @@ const getChapter = async ({
   chapter: number
   locale?: JwLangSymbol
 }) => {
-  return await bibleRepository.fetchBibleChapter(book, chapter, locale)
+  const chapterData = await bibleRepository.fetchBibleChapter(book, chapter, locale)
+  return chapterData
 }
 
 /**
@@ -48,7 +49,8 @@ const getVerse = async ({
   locale?: JwLangSymbol
   verse: number
 }) => {
-  return await bibleRepository.fetchBibleVerse(book, chapter, verse, locale)
+  const verseData = await bibleRepository.fetchBibleVerse(book, chapter, verse, locale)
+  return verseData
 }
 
 /**
