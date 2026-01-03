@@ -684,3 +684,89 @@ export const parseRTF = (rtfContent: string): string => {
 
   return formatted
 }
+
+interface BibleChapter {
+  chapter: number
+  verses: Array<{ text: string; verse: number }>
+}
+
+/**
+ * Parse RTF Bible content and extract structured chapters and verses
+ * @param rtfContent - RTF content string
+ * @returns Structured chapters with verses
+ */
+export const parseRTFBible = (rtfContent: string): BibleChapter[] => {
+  // Usar rtfToText directamente sin cleanAndFormatText para preservar \n\n
+  const plainText = rtfToText(rtfContent)
+  const chapters: BibleChapter[] = []
+
+  // Formato real: "capítulo versículo texto. número texto. número texto..."
+  // Ejemplo: "1 1 En el principio... 2 Ahora bien... 3 Y Dios dijo..."
+
+  // Buscar inicio de capítulos: "número número texto"
+  const chapterStartPattern = /(\d+)\s+(\d+)\s+/g
+  const chapterStarts: Array<{ chapter: number; endIndex: number; index: number; verse: number }> =
+    []
+
+  let match: null | RegExpExecArray
+  while ((match = chapterStartPattern.exec(plainText)) !== null) {
+    chapterStarts.push({
+      chapter: parseInt(match[1]!),
+      endIndex: match.index + match[0].length,
+      index: match.index,
+      verse: parseInt(match[2]!)
+    })
+  }
+
+  // Procesar cada inicio de capítulo
+  for (let i = 0; i < chapterStarts.length; i++) {
+    const start = chapterStarts[i]!
+    const nextStart = chapterStarts[i + 1]
+
+    // Extraer texto del capítulo completo
+    const chapterText = nextStart
+      ? plainText.substring(start.endIndex, nextStart.index)
+      : plainText.substring(start.endIndex)
+
+    // Buscar o crear capítulo
+    let chapter = chapters.find((c) => c.chapter === start.chapter)
+    if (!chapter) {
+      chapter = { chapter: start.chapter, verses: [] }
+      chapters.push(chapter)
+    }
+
+    // En el texto parseado actual, los versículos están separados por ". número "
+    // Ejemplo: "En el principio, Dios creó los cielos y la tierra. 2 Ahora bien..."
+
+    // Dividir por el patrón ". número " donde el número es secuencial
+    const verseParts = chapterText.split(/\.\s+(\d+)\s+/)
+
+    // Primer elemento es el primer versículo (antes del primer ". número ")
+    if (verseParts[0] && verseParts[0].trim()) {
+      chapter.verses.push({
+        text: verseParts[0].trim(),
+        verse: start.verse
+      })
+    }
+
+    // Elementos subsecuentes vienen en pares: número, texto
+    for (let j = 1; j < verseParts.length; j += 2) {
+      const verseNumStr = verseParts[j]
+      const verseText = verseParts[j + 1]
+
+      if (verseNumStr && verseText && verseText.trim()) {
+        const verseNum = parseInt(verseNumStr)
+        chapter.verses.push({
+          text: verseText.trim(),
+          verse: verseNum
+        })
+      }
+    }
+  }
+
+  // Ordenar capítulos y versículos
+  chapters.sort((a, b) => a.chapter - b.chapter)
+  chapters.forEach((ch) => ch.verses.sort((a, b) => a.verse - b.verse))
+
+  return chapters
+}

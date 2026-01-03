@@ -89,6 +89,26 @@ export const extractLangCode = (input: string): JwLangCode | null => {
 }
 
 /**
+ * Converts a language symbol to a JW language code by fetching from JW.org API.
+ * @param symbol The language symbol (e.g., 'es', 'en').
+ * @returns The JW language code (e.g., 'S', 'E').
+ */
+export const langSymbolToCode = defineCachedFunction(
+  async (symbol: JwLangSymbol): Promise<JwLangCode> => {
+    const { jwRepository } = await import('#server/repository/jw')
+    const languages = await jwRepository.fetchLanguages('en')
+    const language = languages.find((l) => l.symbol === symbol)
+
+    if (!language) {
+      throw new Error(`Language code not found for symbol: ${symbol}`)
+    }
+
+    return language.langcode
+  },
+  { maxAge: 60 * 60 * 24 * 30, name: 'langSymbolToCode' }
+)
+
+/**
  * Extracts a media key from a string.
  * @param input The string to extract the media key from.
  * @returns The media key.
