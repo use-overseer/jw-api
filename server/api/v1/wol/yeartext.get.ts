@@ -1,97 +1,94 @@
 import { z } from 'zod'
 
-const currentYear = new Date().getFullYear()
-
-const querySchema = z.object({
-  wtlocale: jwLangCodeSchema,
-  year: z.coerce
-    .number<string>()
-    .int()
-    .positive()
-    .min(currentYear)
-    .optional()
-    .describe('The year of the yeartext.')
-    .meta({ example: currentYear })
-})
-
-const _responseSchema = z.object({ yeartext: z.partialRecord(z.number(), z.string()) })
-
 defineRouteMeta({
   openAPI: {
+    $global: {
+      components: {
+        parameters: {
+          WtLocale: {
+            description: 'A JW language code for internal use.',
+            examples: {
+              1: { summary: 'English', value: 'E' },
+              2: { summary: 'Dutch', value: 'O' },
+              3: { summary: 'Spanish', value: 'S' }
+            },
+            in: 'query',
+            name: 'wtlocale',
+            required: true,
+            schema: { type: 'string' }
+          }
+        }
+      }
+    },
+    description: 'Get the yeartext for a given language and year.',
+    operationId: 'getYeartext',
     parameters: [
-      {
-        description: 'The language of the yeartext.',
-        examples: {
-          English: { summary: 'English', value: 'E' },
-          O: { summary: 'Dutch', value: 'O' },
-          Spanish: { summary: 'Spanish', value: 'S' }
-        },
-        in: 'query',
-        name: 'wtlocale',
-        required: true,
-        schema: { enum: [...jwLangCodes], type: 'string' }
-      },
+      { $ref: '#/components/parameters/WtLocale' },
       {
         description: 'The year of the yeartext.',
-        example: currentYear,
+        example: 2026,
         in: 'query',
         name: 'year',
         required: false,
-        schema: {
-          default: currentYear,
-          minimum: currentYear,
-          type: 'number'
-        }
+        schema: { default: 2026, maximum: 2027, minimum: 2025, type: 'integer' }
       }
     ],
     responses: {
       200: {
         content: {
           'application/json': {
-            example: { yeartext: { 2025: 'The yeartext of 2025.' } },
+            example: {
+              data: { yeartext: { '2026': 'The yeartext of 2026.' } },
+              meta: {
+                requestId: 'k7f2m9x3q1',
+                responseTime: 42,
+                timestamp: '2026-01-09T12:34:56.789Z',
+                version: 'v1'
+              },
+              success: true
+            },
             schema: {
               properties: {
-                yeartext: {
-                  additionalProperties: { type: 'string' },
+                data: {
+                  properties: {
+                    yeartext: { additionalProperties: { type: 'string' }, type: 'object' }
+                  },
+                  required: ['yeartext'],
                   type: 'object'
-                }
+                },
+                meta: { $ref: '#/components/schemas/ApiMeta' },
+                success: { enum: [true], type: 'boolean' }
               },
+              required: ['success', 'data', 'meta'],
               type: 'object'
             }
           }
         },
-        description: 'A successful response.'
+        description: 'Successful response.'
       },
-      400: {
-        content: {
-          'application/json': {
-            example: { error: 'Invalid year or language.' },
-            schema: {
-              type: 'object'
-            }
-          }
-        },
-        description: 'Validation Error.'
-      },
-      404: {
-        content: {
-          'application/json': {
-            example: { error: 'Yeartext not found.' },
-            schema: {
-              type: 'object'
-            }
-          }
-        },
-        description: 'Not Found.'
-      }
-    }
+      400: { $ref: '#/components/responses/400' },
+      404: { $ref: '#/components/responses/404' }
+    },
+    summary: 'Get yeartext.',
+    tags: ['WOL']
   }
 })
 
-export default defineLoggedEventHandler<typeof _responseSchema>(async (event) => {
-  const { wtlocale, year } = await getValidatedQuery(event, querySchema.parse)
+export default defineLoggedEventHandler(async (event) => {
+  const currentYear = new Date().getFullYear()
+
+  const querySchema = z.object({
+    wtlocale: jwLangCodeSchema.optional().default('E'),
+    year: yearSchema
+      .min(currentYear - 1)
+      .max(currentYear + 1)
+      .optional()
+      .default(currentYear)
+  })
+
+  const { wtlocale, year } = parseQuery(event, querySchema)
 
   const { parsedTitle, year: usedYear } = await wolService.getYeartextDetails(wtlocale, year)
 
-  return { yeartext: { [usedYear?.toString()]: parsedTitle } }
+  return apiSuccess({ yeartext: { [usedYear.toString()]: parsedTitle } })
 })

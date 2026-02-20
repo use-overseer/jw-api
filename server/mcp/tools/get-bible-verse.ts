@@ -1,5 +1,9 @@
 import { z } from 'zod'
 
+const outputSchema = bibleVerseSchema.shape
+
+type Output = z.output<typeof bibleVerseSchema>
+
 export default defineMcpTool({
   annotations: {
     destructiveHint: false,
@@ -18,35 +22,24 @@ export default defineMcpTool({
         verse: verseNumber
       })
 
-      return mcpService.toolResult(verse.content)
+      return mcpService.toolResult<Output>(verse.parsedContent, verse.result)
     } catch (e) {
       return mcpService.toolError(e)
     }
   },
   inputSchema: {
-    book: z
-      .number()
-      .min(1)
-      .max(66)
-      .describe(
-        'The Bible book number (1-66). Can be found in the Bible Books resource. Example: 1 for Genesis, 2 for Exodus, etc.'
-      ),
-    chapter: z
-      .number()
-      .min(1)
-      .max(150)
-      .describe('The Bible chapter number. The number of the chapter in the book.'),
+    book: bibleBookNrSchema,
+    chapter: bibleChapterNrSchema,
     symbol: z
       .enum(jwLangSymbols)
-      .describe(
-        'The language of the Bible. Example: en for English, nl for Dutch, es for Spanish. See JW Languages for the full list. Default to English.'
-      )
+      .meta({
+        description:
+          'The language of the Bible. Example: en for English, nl for Dutch, es for Spanish. See JW Languages for the full list. Default to English.',
+        examples: ['en', 'nl', 'es']
+      })
       .optional()
       .default('en'),
-    verseNumber: z
-      .number()
-      .min(1)
-      .max(176)
-      .describe('The Bible verse number (1-176). The number of the verse in the chapter.')
-  }
+    verseNumber: bibleVerseNrSchema
+  },
+  outputSchema
 })

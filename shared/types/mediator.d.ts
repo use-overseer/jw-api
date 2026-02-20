@@ -50,19 +50,68 @@ export type MediaFetcher =
   | PublicationFetcher
   | { key: MediaKey; langwritten: JwLangCode }
 
+export type MediaItem = MediaItemAudio | MediaItemVideo
+
+export interface MediaItemAudio extends Omit<MediaItemGeneric, 'files' | 'type'> {
+  files: MediaItemFileAudio[]
+  type: 'audio'
+}
+
 /* eslint-disable perfectionist/sort-interfaces */
-export interface MediaItem {
+/* eslint-disable perfectionist/sort-object-types */
+export interface MediaItemFile {
+  progressiveDownloadURL: string
+  checksum: string
+  filesize: number
+  modifiedDatetime: ISODateTime
+  bitRate: number
+  duration: number
+  frameHeight?: number
+  frameWidth?: number
+  label: `${number}p` | null
+  frameRate?: number
+  mimetype: `${string}/${string}`
+  subtitled: boolean
+  subtitles?: {
+    url: string
+    modifiedDatetime: ISODateTime
+    checksum: string
+  }
+}
+/* eslint-enable perfectionist/sort-interfaces */
+/* eslint-enable perfectionist/sort-object-types */
+
+export interface MediaItemFileAudio extends Omit<
+  MediaItemFile,
+  'frameHeight' | 'frameRate' | 'frameWidth' | 'label' | 'languageAgnosticNaturalKey' | 'mimetype'
+> {
+  label: null
+  languageAgnosticNaturalKey: MediaKeyAudio
+  mimetype: `audio/${string}`
+}
+
+export interface MediaItemFileVideo extends RequiredFields<
+  Omit<MediaItemFile, 'label' | 'languageAgnosticNaturalKey' | 'mimetype'>,
+  'frameHeight' | 'frameRate' | 'frameWidth'
+> {
+  label: `${number}p`
+  languageAgnosticNaturalKey: MediaKeyVideo
+  mimetype: `video/${string}`
+}
+
+/* eslint-disable perfectionist/sort-interfaces */
+export interface MediaItemGeneric {
   guid: string
   languageAgnosticNaturalKey: MediaKey
   naturalKey: string
-  type: string
+  type: 'audio' | 'video'
   primaryCategory: CategoryKey
   title: string
   description: string
-  firstPublished: `${number}-${number}-${number}T${number}:${number}:${number}.${number}Z`
+  firstPublished: ISODateTime
   duration: number
-  durationFormattedHHMM: `${number}:${number}`
-  durationFormattedMinSec: `${number}m ${number}s`
+  durationFormattedHHMM: DurationHHMM
+  durationFormattedMinSec: DurationMinSec
   tags: MediaTag[]
   files: MediaItemFile[]
   images: ImagesObject
@@ -71,31 +120,29 @@ export interface MediaItem {
 }
 /* eslint-enable perfectionist/sort-interfaces */
 
-/* eslint-disable perfectionist/sort-interfaces */
-/* eslint-disable perfectionist/sort-object-types */
-export interface MediaItemFile {
-  progressiveDownloadURL: string
-  checksum: string
-  filesize: number
-  modifiedDatetime: `${number}-${number}-${number}T${number}:${number}:${number}.${number}Z`
-  bitRate: number
-  duration: number
-  frameHeight: number
-  frameWidth: number
-  label: `${number}p`
-  frameRate: number
-  mimetype: `${string}/${string}`
-  subtitled: boolean
-  subtitles?: {
-    url: string
-    modifiedDatetime: `${number}-${number}-${number}T${number}:${number}:${number}.${number}Z`
-    checksum: string
-  }
+export interface MediaItemVideo extends Omit<MediaItemGeneric, 'files' | 'type'> {
+  files: MediaItemFileVideo[]
+  type: 'video'
 }
-/* eslint-enable perfectionist/sort-interfaces */
-/* eslint-enable perfectionist/sort-object-types */
 
-export type MediaKey = `docid-${string}` | `pub-${string}`
+export type MediaKey = MediaKeyAudio | MediaKeyVideo
+
+export type MediaKeyAudio =
+  | MediaKeyDocId<'AUDIO'>
+  | MediaKeyPub<'AUDIO'>
+  | MediaKeyPubIssue<'AUDIO'>
+
+export type MediaKeyDocId<T extends 'AUDIO' | 'VIDEO'> = `docid-${number}_${MediaTrack}_${T}`
+
+export type MediaKeyPub<T extends 'AUDIO' | 'VIDEO'> = `pub-${string}_${MediaTrack}_${T}`
+
+export type MediaKeyPubIssue<T extends 'AUDIO' | 'VIDEO'> =
+  `pub-${string}_${number}_${MediaTrack}_${T}`
+
+export type MediaKeyVideo =
+  | MediaKeyDocId<'VIDEO'>
+  | MediaKeyPub<'VIDEO'>
+  | MediaKeyPubIssue<'VIDEO'>
 
 export interface MediatorCategoryDetailedQuery extends MediatorCategoryQuery {
   mediaLimit?: number
@@ -114,7 +161,7 @@ export interface MediatorLanguage {
   isSignLanguage: boolean
   locale: JwLangSymbol
   name: string
-  script: string
+  script: JwLangScript
   vernacular: string
 }
 
@@ -133,5 +180,7 @@ export interface MediatorResultLanguage {
   isSignLanguage: boolean
   languageCode: JwLangCode
   locale: JwLangSymbol
-  script: string
+  script: JwLangScript
 }
+
+export type MediaTrack = 'x' | `${number}`

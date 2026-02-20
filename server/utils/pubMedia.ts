@@ -2,6 +2,15 @@ import { downloadRepository } from '#server/repository/download'
 import { pubMediaRepository } from '#server/repository/pubMedia'
 
 /**
+ * Gets a publication.
+ * @param publication The publication to get.
+ * @returns The publication.
+ */
+const getPublication = async (publication: PubFetcher) => {
+  return await pubMediaRepository.fetchPublication(publication)
+}
+
+/**
  * Gets a meeting workbook.
  * @param langwritten The language to get the meeting workbook for. Defaults to English.
  * @param date The date to get the meeting workbook for. Defaults to the current month and year.
@@ -22,12 +31,22 @@ const getMeetingWorkbook = async ({
 }
 
 /**
- * Gets a publication.
- * @param publication The publication to get.
- * @returns The publication.
+ * Gets a meeting workbook JWPUB.
+ * @param langwritten The language to get the meeting workbook for. Defaults to English.
+ * @param date The date to get the meeting workbook for. Defaults to the current month and year.
+ * @returns The meeting workbook JWPUB.
  */
-const getPublication = async (publication: PubFetcher) => {
-  return await pubMediaRepository.fetchPublication(publication)
+const getMwbJwpub = async ({
+  date,
+  langwritten = 'E'
+}: {
+  date?: { month: number; year: number }
+  langwritten: JwLangCode
+}) => {
+  const publication = await getMeetingWorkbook({ date, fileformat: 'JWPUB', langwritten })
+  const jwpub = publication.files[langwritten]?.JWPUB?.[0]?.file.url
+  if (!jwpub) throw apiNotFoundError('Meeting Workbook JWPUB not found')
+  return jwpub
 }
 
 /**
@@ -50,6 +69,25 @@ const getStudyWatchtower = async ({
   return await pubMediaRepository.fetchPublication({ fileformat, issue, langwritten, pub: 'w' })
 }
 
+/**
+ * Gets a study watchtower JWPUB.
+ * @param langwritten The language to get the study watchtower for. Defaults to English.
+ * @param date The date to get the study watchtower for. Defaults to the current month and year.
+ * @returns The study watchtower JWPUB.
+ */
+const getWtJwpub = async ({
+  date,
+  langwritten = 'E'
+}: {
+  date?: { month: number; year: number }
+  langwritten: JwLangCode
+}) => {
+  const publication = await getStudyWatchtower({ date, fileformat: 'JWPUB', langwritten })
+  const jwpub = publication.files[langwritten]?.JWPUB?.[0]?.file.url
+  if (!jwpub) throw apiNotFoundError('Study Watchtower JWPUB not found')
+  return jwpub
+}
+
 const getWatchtowerArticles = async ({
   date,
   langwritten = 'E'
@@ -70,13 +108,47 @@ const getWatchtowerArticleContent = async (url: string) => {
   return parseRTF(article)
 }
 
+const getBookNumByName = async (name: string, langwritten: JwLangCode = 'E') => {
+  const lowerName = name.toLowerCase()
+  const bible = await getPublication({ booknum: 0, langwritten, pub: 'nwt' })
+
+  if (bible.files[langwritten]?.DAISY) {
+    const match = bible.files[langwritten].DAISY.find(
+      (file) => file.title.toLowerCase() === lowerName
+    )
+
+    if (match && match.booknum) return match.booknum
+  }
+
+  if (bible.files[langwritten]?.RTF) {
+    const match = bible.files[langwritten].RTF.find(
+      (file) => file.title.toLowerCase() === lowerName
+    )
+
+    if (match && match.booknum) return match.booknum
+  }
+
+  if (bible.files[langwritten]?.BRL) {
+    const match = bible.files[langwritten].BRL.find(
+      (file) => file.title.toLowerCase() === lowerName
+    )
+
+    if (match && match.booknum) return match.booknum
+  }
+
+  return null
+}
+
 /**
  * A service wrapping the publication media repository.
  */
 export const pubMediaService = {
+  getBookNumByName,
   getMeetingWorkbook,
+  getMwbJwpub,
   getPublication,
   getStudyWatchtower,
   getWatchtowerArticleContent,
-  getWatchtowerArticles
+  getWatchtowerArticles,
+  getWtJwpub
 }

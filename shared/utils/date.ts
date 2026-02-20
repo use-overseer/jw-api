@@ -49,10 +49,12 @@ export const getWeekOfYear = (date?: { day: number; month: number; year: number 
  * @returns The formatted date.
  */
 export const formatDate = (
-  date?: Date,
-  format: 'YYYY-MM-DD' | 'YYYYMMDD' = 'YYYY-MM-DD'
+  date?: Date | string,
+  format: 'YYYY-MM-DD' | 'YYYY/MM/DD' | 'YYYYMMDD' = 'YYYY-MM-DD'
 ): string => {
   if (!date) date = new Date()
+  if (typeof date === 'string') date = parseDate(date)
+
   const year = date.getFullYear()
   const day = pad(date.getDate()) // 01 - 31
   const month = pad(date.getMonth() + 1) // 01 - 12
@@ -60,9 +62,37 @@ export const formatDate = (
   switch (format) {
     case 'YYYY-MM-DD':
       return `${year}-${month}-${day}`
+    case 'YYYY/MM/DD':
+      return `${year}/${month}/${day}`
     case 'YYYYMMDD':
       return `${year}${month}${day}`
     default:
-      throw createInternalServerError(`Unsupported date format: ${format}`)
+      throw new Error(`Invalid date format: ${format}`)
   }
+}
+
+/**
+ * Parses a date string into a Date object.
+ * @param date The date to parse.
+ * @returns The parsed date.
+ *
+ * @example
+ * parseDate('2024-01-30') // 2024-01-30
+ * parseDate('2024/01/30') // 2024-01-30
+ * parseDate('20240130') // 2024-01-30
+ */
+export const parseDate = (date: string): Date => {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    return new Date(date)
+  }
+  if (/^\d{4}\/\d{2}\/\d{2}$/.test(date)) {
+    return new Date(date.replace(/\//g, '-'))
+  }
+  if (/^\d{8}$/.test(date)) {
+    const year = +date.slice(0, 4)
+    const month = +date.slice(4, 6)
+    const day = +date.slice(6, 8)
+    return new Date(Date.UTC(year, month - 1, day))
+  }
+  throw new Error(`Invalid date format: ${date}`)
 }

@@ -1,20 +1,24 @@
-export type PubFetcher = PublicationBookFetcher | PublicationDocFetcher | PublicationFetcher
+export type PubFetcher = PublicationBibleFetcher | PublicationDocFetcher | PublicationFetcher
 
 /* eslint-disable perfectionist/sort-interfaces */
 /* eslint-disable perfectionist/sort-object-types */
 export interface Publication {
   pubName: string
   parentPubName: string
-  booknum: null | number
+  booknum: 0 | BibleBookNr | null
   pub: string
   issue: '' | `${number}`
-  formattedDate: string
+  /**
+   * The formatted date of the publication in HTML.
+   * @example 'November&nbsp;2022'
+   */
+  formattedDate: HTML
   fileformat: PublicationFileFormat[]
   track: null | number
   specialty: string
   pubImage: {
     url: string
-    modifiedDatetime: string
+    modifiedDatetime: ISODateTimeOffset
     checksum: string
   }
   languages: Partial<
@@ -24,7 +28,7 @@ export interface Publication {
         name: string
         direction: 'ltr' | 'rtl'
         locale: JwLangSymbol
-        script: string
+        script: JwLangScript
       }
     >
   >
@@ -33,11 +37,12 @@ export interface Publication {
 /* eslint-enable perfectionist/sort-interfaces */
 /* eslint-enable perfectionist/sort-object-types */
 
-export interface PublicationBookFetcher {
-  booknum: number
+export interface PublicationBibleFetcher {
+  booknum: 0 | BibleBookNr
   fileformat?: PublicationFileFormat
   langwritten: JwLangCode
-  pub: 'nwt'
+  pub: BiblePublication
+  track?: number
 }
 
 export interface PublicationDocFetcher {
@@ -65,15 +70,13 @@ export interface PublicationFile {
   file: {
     url: string
     stream: string
-    modifiedDatetime: '' | `${number}-${number}-${number} ${number}:${number}:${number}`
+    modifiedDatetime: '' | HumanReadableDateTime
     checksum: string
   }
   filesize: number
   trackImage: {
     url: string
-    modifiedDatetime:
-      | ''
-      | `${number}-${number}-${number}T${number}:${number}:${number}+${number}:${number}`
+    modifiedDatetime: '' | ISODateTimeOffset
     checksum: null | string
   }
   markers: {
@@ -82,16 +85,16 @@ export interface PublicationFile {
     documentId: number
     type: 'publication' | string
     markers: {
-      duration: `${number}:${number}:${number}.${number}`
-      startTime: `${number}:${number}:${number}.${number}`
+      duration: Timestamp
+      startTime: Timestamp
       label?: string
-      endTransitionDuration?: `${number}:${number}:${number}.${number}`
+      endTransitionDuration?: Timestamp
       mepsParagraphId: number
     }[]
     hash: string
     introduction: {
-      duration: `${number}:${number}:${number}.${number}`
-      startTime: `${number}:${number}:${number}.${number}`
+      duration: Timestamp
+      startTime: Timestamp
     }
   }
   label: `${number}p`
@@ -99,7 +102,7 @@ export interface PublicationFile {
   hasTrack: boolean
   pub: string
   docid: number
-  booknum: number
+  booknum: 0 | BibleBookNr | null
   mimetype: `${string}/${string}`
   edition: string
   editionDescr: string
