@@ -1,9 +1,30 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { z } from 'zod'
 
+import {
+  biblePublicationSchema,
+  jwLangCodeSchema,
+  publicationFileFormatSchema,
+  trackSchema
+} from '../../../shared/utils/schemas'
+
 // Stub globals before import
-vi.stubGlobal('jwLangCodes', ['E', 'S'])
-vi.stubGlobal('jwLangSymbols', ['en', 'es'])
+vi.hoisted(() => {
+  vi.stubGlobal('jwLangCodes', ['E', 'S'])
+  vi.stubGlobal('jwLangSymbols', ['en', 'es'])
+  vi.stubGlobal('imageSizes', ['sm', 'md', 'lg'])
+  vi.stubGlobal('imageTypes', ['pnr', 'sqr', 'wss'])
+  vi.stubGlobal('biblePublications', ['nwt', 'nwtsty'])
+  vi.stubGlobal('jwLangScripts', ['ROMAN', 'CYRILLIC', 'ARABIC'])
+  vi.stubGlobal('publicationFileFormats', ['MP3', 'PDF', 'MP4'])
+  vi.stubGlobal('categoryContainerKeys', [])
+  vi.stubGlobal('categoryOnDemandKeys', [])
+})
+
+vi.stubGlobal('trackSchema', trackSchema)
+vi.stubGlobal('jwLangCodeSchema', jwLangCodeSchema)
+vi.stubGlobal('biblePublicationSchema', biblePublicationSchema)
+vi.stubGlobal('publicationFileFormatSchema', publicationFileFormatSchema)
 
 describe('schemas utils', () => {
   let schemas: typeof import('../../../server/utils/schemas')
@@ -12,39 +33,6 @@ describe('schemas utils', () => {
     // Reset modules to ensure fresh evaluation if needed, though usually once is enough unless we change mocks
     vi.resetModules()
     schemas = await import('../../../server/utils/schemas')
-  })
-
-  describe('jwLangCodeSchema', () => {
-    it('should validate valid codes', () => {
-      expect(schemas.jwLangCodeSchema.parse('E')).toBe('E')
-      expect(schemas.jwLangCodeSchema.parse('S')).toBe('S')
-    })
-
-    it('should reject invalid codes', () => {
-      expect(() => schemas.jwLangCodeSchema.parse('X')).toThrow()
-    })
-  })
-
-  describe('jwLangSymbolSchema', () => {
-    it('should validate valid symbols', () => {
-      expect(schemas.jwLangSymbolSchema.parse('en')).toBe('en')
-      expect(schemas.jwLangSymbolSchema.parse('es')).toBe('es')
-    })
-
-    it('should reject invalid symbols', () => {
-      expect(() => schemas.jwLangSymbolSchema.parse('fr')).toThrow()
-    })
-  })
-
-  describe('publicationFileFormatSchema', () => {
-    it('should validate valid formats', () => {
-      expect(schemas.publicationFileFormatSchema.parse('MP3')).toBe('MP3')
-      expect(schemas.publicationFileFormatSchema.parse('PDF')).toBe('PDF')
-    })
-
-    it('should reject invalid formats', () => {
-      expect(() => schemas.publicationFileFormatSchema.parse('EXE')).toThrow()
-    })
   })
 
   describe('zodToParams', () => {
@@ -94,7 +82,7 @@ describe('schemas utils', () => {
 
       // @ts-expect-error - responses does not exist on reference
       expect(responses['200'].content['application/json']).toHaveProperty('schema')
-      expect(responses['200'].description).toBe('Successful response')
+      expect(responses['200'].description).toBe('Successful response.')
     })
   })
 })

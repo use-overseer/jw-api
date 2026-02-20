@@ -6,6 +6,10 @@ import { bibleService } from '../../../server/utils/bible'
 // Mock defineCachedFunction BEFORE importing anything that uses it
 vi.hoisted(() => {
   vi.stubGlobal('defineCachedFunction', (fn: unknown) => fn)
+  vi.stubGlobal('parseHtml', (html: string) => ({
+    innerText: html,
+    querySelector: vi.fn().mockReturnValue({ remove: vi.fn(), textContent: 'test' })
+  }))
 })
 
 vi.mock('../../../server/repository/bible')
@@ -37,6 +41,40 @@ describe('bible utils', () => {
     })
   })
 
+  describe('getBibleData', () => {
+    it('should call fetchBibleData', async () => {
+      const mockResult = { editionData: { books: [] } }
+      vi.mocked(bibleRepository.fetchBibleData).mockResolvedValue(mockResult)
+
+      const result = await bibleService.getBibleData('es')
+
+      expect(result).toEqual(mockResult)
+      expect(bibleRepository.fetchBibleData).toHaveBeenCalledWith('es')
+    })
+  })
+
+  describe('getBook', () => {
+    it('should call fetchBibleBook with default locale', async () => {
+      const mockResult = { book: { title: 'Genesis' }, range: {} }
+      vi.mocked(bibleRepository.fetchBibleBook).mockResolvedValue(mockResult)
+
+      const result = await bibleService.getBook({ book: 1 })
+
+      expect(result).toEqual(mockResult)
+      expect(bibleRepository.fetchBibleBook).toHaveBeenCalledWith(1, 'en')
+    })
+
+    it('should call fetchBibleBook with provided locale', async () => {
+      const mockResult = { book: { title: 'Genesis' }, range: {} }
+      vi.mocked(bibleRepository.fetchBibleBook).mockResolvedValue(mockResult)
+
+      const result = await bibleService.getBook({ book: 1, locale: 'es' })
+
+      expect(result).toEqual(mockResult)
+      expect(bibleRepository.fetchBibleBook).toHaveBeenCalledWith(1, 'es')
+    })
+  })
+
   describe('getChapter', () => {
     it('should call fetchBibleChapter', async () => {
       const mockResult = { verses: [] }
@@ -65,7 +103,7 @@ describe('bible utils', () => {
 
       const result = await bibleService.getVerse({ book: 1, chapter: 1, locale: 'de', verse: 1 })
 
-      expect(result).toEqual(mockResult)
+      expect(result).toEqual({ parsedContent: 'test', result: mockResult })
       expect(bibleRepository.fetchBibleVerse).toHaveBeenCalledWith(1, 1, 1, 'de')
     })
 

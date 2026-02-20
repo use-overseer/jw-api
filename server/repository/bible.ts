@@ -1,84 +1,204 @@
-import { pubMediaRepository } from '#server/repository/pubMedia'
-import { langSymbolToCode } from '#server/utils/general'
-import { parseRTFBible } from '#server/utils/rtf'
+import type { FetchOptions } from 'ofetch'
+
+const SERVICE_NAME = 'Bible'
+
+const defaultFetchOptions = {
+  headers: {
+    'User-Agent': 'Mozilla/5.0 (compatible; JW-API/1.0)'
+  },
+  retry: 2,
+  retryDelay: 1000,
+  timeout: 30000
+} satisfies FetchOptions
+
+/**
+ * Fetches multimedia from a book of the Bible.
+ * @param book The book number.
+ * @param locale The language of the Bible.
+ * @returns The multimedia.
+ * @throws If the book is not found or the service is unavailable.
+ */
+const fetchBibleMultimedia = defineCachedFunction(
+  async (book: BibleBookNr, locale: JwLangSymbol) => {
+    try {
+      const url = (await scrapeBibleDataUrl(locale)).replace('/data', '/multimedia')
+
+      const result = await $fetch<BibleResultMultimedia>(`${url}/${book}`, {
+        ...defaultFetchOptions
+      })
+
+      const rangesData = Object.values(result.ranges ?? {})[0] ?? null
+
+      if (!rangesData) {
+        throw apiNotFoundError(`Book ${book} multimedia not found for locale '${locale}'`)
+      }
+
+      return rangesData
+    } catch (error) {
+      if (isApiError(error)) {
+        throw error
+      }
+
+      throw toFetchApiError(error, {
+        notFoundMessage: `Book ${book} multimedia not found for locale '${locale}'`,
+        serviceName: SERVICE_NAME
+      })
+    }
+  },
+  { maxAge: 60 * 60 * 24 * 30, name: 'bibleRepository.fetchBibleMultimedia' }
+)
+
+/**
+ * Fetches a Bible range.
+ * @param start The start of the range.
+ * @param end The end of the range.
+ * @param locale The language of the Bible.
+ * @returns The range data.
+ * @throws If the book is not found or the service is unavailable.
+ */
+const fetchBibleRange = defineCachedFunction(
+  async (
+    start: { book: BibleBookNr; chapter: number; verse: number },
+    end: { book: BibleBookNr; chapter: number; verse: number },
+    locale: JwLangSymbol
+  ) => {
+    try {
+      const url = await scrapeBibleDataUrl(locale)
+      const startVerseId = generateVerseId(start.book, start.chapter, start.verse)
+      const endVerseId = generateVerseId(end.book, end.chapter, end.verse)
+      const range: `${number}-${number}` = `${startVerseId}-${endVerseId}`
+
+      const result = await $fetch<BibleResult>(`${url}/${range}`, { ...defaultFetchOptions })
+
+      const rangesData = Object.values(result.ranges ?? {})[0] ?? null
+
+      if (!rangesData) {
+        throw apiNotFoundError(`Range not found for locale '${locale}'`)
+      }
+
+      return rangesData
+    } catch (error) {
+      if (isApiError(error)) {
+        throw error
+      }
+      throw toFetchApiError(error, {
+        notFoundMessage: `Range not found for locale '${locale}'`,
+        serviceName: SERVICE_NAME
+      })
+    }
+  },
+  { maxAge: 60 * 60 * 24 * 30, name: 'bibleRepository.fetchBibleRange' }
+)
 
 /**
  * Repository for Bible resources using RTF files from pub-media.
  */
 export const bibleRepository = {
   /**
-   * Fetches RTF content for a Bible book.
-   * @param book The book number (1-66).
-   * @param locale The language code.
-   * @returns The RTF content as plain text.
+   * Fetches a book of the Bible.
+   * @param book The book number.
+   * @param locale The language of the Bible.
+   * @returns The book data.
+   * @throws If the book is not found or the service is unavailable.
    */
-  fetchBibleBookRTF: defineCachedFunction(
-    async (book: number, locale: JwLangSymbol) => {
-      const langCode = await langSymbolToCode(locale)
+  fetchBibleBook: defineCachedFunction(
+    async (book: BibleBookNr, locale: JwLangSymbol) => {
+      try {
+        const url = await scrapeBibleDataUrl(locale)
+        const startVerseId = generateVerseId(book, 0, 0)
+        const endVerseId = generateVerseId(book, 999, 999)
+        const range: `${number}-${number}` = `${startVerseId}-${endVerseId}`
 
-      const publication = await pubMediaRepository.fetchPublication({
-        booknum: book,
-        langwritten: langCode,
-        pub: 'nwt'
-      })
+        const result = await $fetch<BibleResult>(`${url}/${range}`, { ...defaultFetchOptions })
 
-      const rtfFiles = publication.files?.[langCode]?.RTF
-      if (!rtfFiles || rtfFiles.length === 0) {
-        throw createNotFoundError('RTF file not found for this book.', { book, locale })
+        const rangesData = Object.values(result.ranges ?? {})[0] ?? null
+
+        if (!rangesData) {
+          throw apiNotFoundError(`Book ${book} not found for locale '${locale}'`)
+        }
+
+        const bookData = result.editionData.books[book]
+
+        const multimediaResult = await fetchBibleMultimedia(book, locale)
+        const validRange = multimediaResult.validRange
+
+        if (rangesData.validRange === validRange) {
+          return { book: bookData, range: rangesData }
+        }
+
+        let mergedRange: BibleRange = rangesData
+        const totalRange = parseBibleRangeId(validRange).end
+        let fetchedRange = parseBibleRangeId(rangesData.validRange).end
+
+        while (JSON.stringify(fetchedRange) !== JSON.stringify(totalRange)) {
+          const nextRange = await fetchBibleRange(
+            { ...fetchedRange, verse: fetchedRange.verse + 1 },
+            totalRange,
+            locale
+          )
+
+          mergedRange = {
+            ...multimediaResult,
+            chapterOutlines: [
+              ...(mergedRange.chapterOutlines ?? []),
+              ...(nextRange.chapterOutlines ?? [])
+            ],
+            commentaries: [...(mergedRange.commentaries ?? []), ...(nextRange.commentaries ?? [])],
+            crossReferences: [
+              ...(mergedRange.crossReferences ?? []),
+              ...(nextRange.crossReferences ?? [])
+            ],
+            footnotes: [...(mergedRange.footnotes ?? []), ...(nextRange.footnotes ?? [])],
+            html: (mergedRange.html ?? '') + (nextRange.html ?? ''),
+            pubReferences: [
+              ...(mergedRange.pubReferences ?? []),
+              ...(nextRange.pubReferences ?? [])
+            ],
+            superscriptions: [
+              ...(mergedRange.superscriptions ?? []),
+              ...(nextRange.superscriptions ?? [])
+            ],
+            verses: [...(mergedRange.verses ?? []), ...(nextRange.verses ?? [])]
+          }
+
+          fetchedRange = parseBibleRangeId(nextRange.validRange).end
+        }
+
+        return { book: bookData, range: mergedRange }
+      } catch (error) {
+        if (isApiError(error)) {
+          throw error
+        }
+        throw toFetchApiError(error, {
+          notFoundMessage: `Book ${book} not found for locale '${locale}'`,
+          serviceName: SERVICE_NAME
+        })
       }
-
-      const rtfUrl = rtfFiles[0]?.file?.url
-      if (!rtfUrl) {
-        throw createNotFoundError('RTF URL not found.', { book, locale })
-      }
-
-      const rtfContent = await $fetch<string>(rtfUrl, { responseType: 'text' })
-      const plainText = parseRTF(rtfContent)
-
-      return plainText
     },
-    { maxAge: 60 * 60 * 24 * 30, name: 'bibleRepository.fetchBibleBookRTF' }
+    { maxAge: 60 * 60 * 24 * 30, name: 'bibleRepository.fetchBibleBook' }
   ),
 
   /**
-   * Fetches a chapter of the Bible from RTF.
+   * Fetches a chapter of the Bible.
    * @param book The book number.
    * @param chapter The chapter number.
    * @param locale The language of the Bible.
-   * @returns The chapter text.
+   * @returns The chapter data.
+   * @throws If the chapter is not found or the service is unavailable.
    */
   fetchBibleChapter: defineCachedFunction(
-    async (book: number, chapter: number, locale: JwLangSymbol) => {
-      const langCode = await langSymbolToCode(locale)
-
-      const publication = await pubMediaRepository.fetchPublication({
-        booknum: book,
-        langwritten: langCode,
-        pub: 'nwt'
-      })
-
-      const rtfFiles = publication.files?.[langCode]?.RTF
-      if (!rtfFiles || rtfFiles.length === 0) {
-        throw createNotFoundError('RTF file not found for this book.', { book, locale })
-      }
-
-      const rtfUrl = rtfFiles[0]?.file?.url
-      if (!rtfUrl) {
-        throw createNotFoundError('RTF URL not found.', { book, locale })
-      }
-
-      const rtfContent = await $fetch<string>(rtfUrl, { responseType: 'text' })
-      const chapters = parseRTFBible(rtfContent)
-
-      const chapterData = chapters.find((c) => c.chapter === chapter)
-
-      if (!chapterData) {
-        throw createNotFoundError('Chapter not found in RTF.', { book, chapter, locale })
-      }
-
-      return {
-        chapter: chapterData.chapter,
-        verses: chapterData.verses
+    async (book: BibleBookNr, chapter: number, locale: JwLangSymbol) => {
+      try {
+        return await fetchBibleRange(
+          { book, chapter, verse: 0 },
+          { book, chapter, verse: 999 },
+          locale
+        )
+      } catch (error) {
+        throw toFetchApiError(error, {
+          notFoundMessage: `Chapter ${chapter} of book ${book} not found for locale '${locale}'`,
+          serviceName: SERVICE_NAME
+        })
       }
     },
     { maxAge: 60 * 60 * 24 * 30, name: 'bibleRepository.fetchBibleChapter' }
@@ -87,88 +207,65 @@ export const bibleRepository = {
   /**
    * Fetches information about the Bible books.
    * @param locale The language of the Bible.
-   * @param includeContent Whether to include full RTF content parsed (default: true for backward compatibility).
-   * @returns The Bible books data.
+   * @returns The Bible data.
+   * @throws If the Bible data is not found or the service is unavailable.
    */
   fetchBibleData: defineCachedFunction(
-    async (locale: JwLangSymbol, includeContent: boolean = true) => {
-      const langCode = await langSymbolToCode(locale)
-
-      // Obtener dinámicamente todos los libros desde pub-media en paralelo
-      const bookPromises = Array.from({ length: 66 }, (_, i) => i + 1).map(async (bookNum) => {
-        try {
-          const publication = await pubMediaRepository.fetchPublication({
-            booknum: bookNum,
-            langwritten: langCode,
-            pub: 'nwt'
-          })
-
-          const rtfFiles = publication.files?.[langCode]?.RTF
-          if (rtfFiles && rtfFiles.length > 0) {
-            const rtfUrl = rtfFiles[0]?.file?.url
-
-            const baseData = {
-              bookNum,
-              name: rtfFiles[0]?.title || `Book ${bookNum}`,
-              rtfUrl,
-              standardName: publication.pubName || `Book ${bookNum}`
-            }
-
-            if (!rtfUrl || !includeContent) {
-              return { ...baseData, chapters: [] }
-            }
-
-            // Descargar y parsear el RTF
-            const rtfContent = await $fetch<string>(rtfUrl, { responseType: 'text' })
-            const chapters = parseRTFBible(rtfContent)
-
-            return {
-              ...baseData,
-              chapters
-            }
-          }
-          return null
-        } catch (error) {
-          console.error(`Error fetching book ${bookNum}:`, error)
-          return null
+    async (locale: JwLangSymbol) => {
+      try {
+        const url = await scrapeBibleDataUrl(locale)
+        return await $fetch<BibleResultEmpty>(url, { ...defaultFetchOptions })
+      } catch (error) {
+        if (isApiError(error)) {
+          throw error
         }
-      })
-
-      const results = await Promise.all(bookPromises)
-      const books = results.filter((book) => book !== null)
-
-      return { editionData: { books } }
+        throw toFetchApiError(error, {
+          notFoundMessage: `Bible data not found for locale '${locale}'`,
+          serviceName: SERVICE_NAME
+        })
+      }
     },
     { maxAge: 60 * 60 * 24 * 30, name: 'bibleRepository.fetchBibleData' }
   ),
 
+  fetchBibleMultimedia,
+
   /**
-   * Fetches a verse of the Bible from RTF.
+   * Fetches a verse of the Bible.
    * @param book The book number.
    * @param chapter The chapter number.
    * @param verseNumber The verse number.
    * @param locale The language of the Bible.
-   * @returns The verse text.
+   * @returns The verse data.
+   * @throws If the verse is not found or the service is unavailable.
    */
   fetchBibleVerse: defineCachedFunction(
-    async (book: number, chapter: number, verseNumber: number, locale: JwLangSymbol) => {
-      const chapterData = await bibleRepository.fetchBibleChapter(book, chapter, locale)
+    async (book: BibleBookNr, chapter: number, verseNumber: number, locale: JwLangSymbol) => {
+      try {
+        const url = await scrapeBibleDataUrl(locale)
+        const verseId = generateVerseId(book, chapter, verseNumber)
 
-      const verse = chapterData.verses.find((v) => v.verse === verseNumber)
-
-      if (!verse) {
-        throw createNotFoundError('Verse not found in chapter.', {
-          book,
-          chapter,
-          locale,
-          verseNumber
+        const result = await $fetch<BibleResultSingle>(`${url}/${verseId}`, {
+          ...defaultFetchOptions
         })
-      }
 
-      return {
-        chapter: chapterData.chapter,
-        text: verse.text,
-        verse: verse.verse
+        const verse = result.ranges?.[verseId]?.verses?.[0]
+
+        if (!verse) {
+          throw apiNotFoundError(
+            `Verse ${verseNumber} of chapter ${chapter}, book ${book} not found for locale '${locale}'`
+          )
+        }
+
+        return verse
+      } catch (error) {
+        if (isApiError(error)) {
+          throw error
+        }
+        throw toFetchApiError(error, {
+          notFoundMessage: `Verse ${verseNumber} of chapter ${chapter}, book ${book} not found for locale '${locale}'`,
+          serviceName: SERVICE_NAME
+        })
       }
     },
     { maxAge: 60 * 60 * 24 * 30, name: 'bibleRepository.fetchBibleVerse' }

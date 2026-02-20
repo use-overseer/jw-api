@@ -1,13 +1,20 @@
 import vitest from '@vitest/eslint-plugin'
 import perfectionist from 'eslint-plugin-perfectionist'
 import eslintPluginPrettierRecommended from 'eslint-plugin-prettier/recommended'
+import security from 'eslint-plugin-security'
 
 // @ts-check
 import withNuxt from './.nuxt/eslint.config.mjs'
 
 export default withNuxt(
+  // Plugins
+  security.configs.recommended,
   perfectionist.configs['recommended-natural'],
-  { files: ['test/**'], plugins: { vitest }, rules: { ...vitest.configs.recommended.rules } },
+
+  // General rules
+  { rules: { 'no-console': ['error'] } },
+
+  // Vue specific rules
   {
     files: ['**/*.vue'],
     rules: {
@@ -26,9 +33,15 @@ export default withNuxt(
       'vue/prefer-template': ['warn']
     }
   },
+
+  // Test files
+  { files: ['test/**'], plugins: { vitest }, rules: { ...vitest.configs.recommended.rules } },
+
+  // Prettier
   eslintPluginPrettierRecommended,
   { rules: { 'prettier/prettier': ['error', { endOfLine: 'auto' }] } }
 ).overrideRules({
+  'security/detect-object-injection': 'off',
   'vue/attributes-order': ['warn', { alphabetical: true, sortLineLength: true }],
   'vue/block-order': ['error', { order: ['template', 'script', 'style'] }]
 })

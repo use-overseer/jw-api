@@ -1,12 +1,11 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { formatDate, getMondayOfWeek, getWeekOfYear } from '../../../server/utils/date'
-import { pad } from '../../../server/utils/general'
+import { formatDate, getMondayOfWeek, getWeekOfYear, parseDate } from '../../../shared/utils/date'
+import { pad } from '../../../shared/utils/general'
 
 // Stub globals
 vi.stubGlobal('pad', pad)
-vi.stubGlobal('createInternalServerError', (msg: string) => new Error(msg))
-
+vi.stubGlobal('apiBadRequestError', (msg: string) => new Error(msg))
 describe('date utils', () => {
   afterEach(() => {
     vi.useRealTimers()
@@ -65,10 +64,41 @@ describe('date utils', () => {
       expect(formatDate()).toBe('2024-12-31')
     })
 
+    it('should format date as YYYY/MM/DD', () => {
+      const date = new Date(Date.UTC(2024, 0, 1))
+      expect(formatDate(date, 'YYYY/MM/DD')).toBe('2024/01/01')
+    })
+
+    it('should format date as YYYYMMDD', () => {
+      const date = new Date(Date.UTC(2024, 0, 1))
+      expect(formatDate(date, 'YYYYMMDD')).toBe('20240101')
+    })
+
     it('should throw error for unsupported format', () => {
-      expect(() => formatDate(new Date(), 'DD-MM-YYYY' as 'YYYY-MM-DD')).toThrow(
-        'Unsupported date format: DD-MM-YYYY'
+      expect(() => formatDate(new Date(), 'unsupported' as 'YYYY-MM-DD')).toThrow(
+        'Invalid date format: unsupported'
       )
+    })
+  })
+
+  describe('parseDate', () => {
+    it('should parse YYYY-MM-DD format', () => {
+      const date = parseDate('2024-01-30')
+      expect(date.toISOString().split('T')[0]).toBe('2024-01-30')
+    })
+
+    it('should parse YYYY/MM/DD format', () => {
+      const date = parseDate('2024/01/30')
+      expect(date.toISOString().split('T')[0]).toBe('2024-01-30')
+    })
+
+    it('should parse YYYYMMDD format', () => {
+      const date = parseDate('20240130')
+      expect(date.toISOString().split('T')[0]).toBe('2024-01-30')
+    })
+
+    it('should throw error for invalid format', () => {
+      expect(() => parseDate('invalid-date')).toThrow('Invalid date format: invalid-date')
     })
   })
 })

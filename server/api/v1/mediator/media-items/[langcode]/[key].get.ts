@@ -1,15 +1,154 @@
 import { z } from 'zod'
 
-const routeSchema = z.object({
-  key: z
-    .string()
-    .describe('The language agnostic natural key of the media item.')
-    .meta({ example: 'pub-imv_4_VIDEO' }),
-  langcode: jwLangCodeSchema
+const routeSchema = z.strictObject({ key: mediaKeySchema, langcode: jwLangCodeSchema })
+
+defineRouteMeta({
+  openAPI: {
+    $global: {
+      components: {
+        parameters: {
+          MediaKey: {
+            description: 'The media key.',
+            examples: {
+              1: { summary: 'Video 1', value: 'pub-ivno_x_VIDEO' },
+              2: { summary: 'Video 2', value: 'pub-mwbv_202405_1_VIDEO' },
+              3: { summary: 'Audio 1', value: 'pub-osg_9_AUDIO' }
+            },
+            in: 'path',
+            name: 'key',
+            required: true,
+            schema: { type: 'string' }
+          }
+        },
+        schemas: {
+          ImageSizesObject: {
+            properties: {
+              lg: { format: 'uri', type: 'string' },
+              md: { format: 'uri', type: 'string' },
+              sm: { format: 'uri', type: 'string' },
+              xs: { format: 'uri', type: 'string' }
+            },
+            type: 'object'
+          },
+          ImagesObject: {
+            properties: {
+              cvr: { $ref: '#/components/schemas/ImageSizesObject' },
+              lsr: { $ref: '#/components/schemas/ImageSizesObject' },
+              lss: { $ref: '#/components/schemas/ImageSizesObject' },
+              pnr: { $ref: '#/components/schemas/ImageSizesObject' },
+              sqr: { $ref: '#/components/schemas/ImageSizesObject' },
+              sqs: { $ref: '#/components/schemas/ImageSizesObject' },
+              wsr: { $ref: '#/components/schemas/ImageSizesObject' },
+              wss: { $ref: '#/components/schemas/ImageSizesObject' }
+            },
+            type: 'object'
+          },
+          MediaItem: {
+            properties: {
+              availableLanguages: { items: { type: 'string' }, type: 'array' },
+              description: { type: 'string' },
+              duration: { type: 'number' },
+              durationFormattedHHMM: { type: 'string' },
+              durationFormattedMinSec: { type: 'string' },
+              files: { items: { $ref: '#/components/schemas/MediaItemFile' }, type: 'array' },
+              firstPublished: { format: 'date-time', type: 'string' },
+              guid: { type: 'string' },
+              images: { $ref: '#/components/schemas/ImagesObject' },
+              languageAgnosticNaturalKey: { type: 'string' },
+              naturalKey: { type: 'string' },
+              primaryCategory: { type: 'string' },
+              printReferences: { items: { type: 'string' }, type: 'array' },
+              tags: { items: { type: 'string' }, type: 'array' },
+              title: { type: 'string' },
+              type: { enum: ['video', 'audio'], type: 'string' }
+            },
+            required: [
+              'availableLanguages',
+              'description',
+              'duration',
+              'durationFormattedHHMM',
+              'durationFormattedMinSec',
+              'files',
+              'firstPublished',
+              'guid',
+              'images',
+              'languageAgnosticNaturalKey',
+              'naturalKey',
+              'primaryCategory',
+              'printReferences',
+              'tags',
+              'title',
+              'type'
+            ],
+            type: 'object'
+          },
+          MediaItemFile: {
+            properties: {
+              checksum: { type: 'string' },
+              filesize: { type: 'integer' },
+              label: { type: 'string' },
+              mimetype: { type: 'string' },
+              modifiedDateTime: { format: 'date-time', type: 'string' },
+              progressiveDownloadURL: { format: 'uri', type: 'string' },
+              subtitled: { type: 'boolean' },
+              subtitles: {
+                properties: {
+                  checksum: { type: 'string' },
+                  modifiedDateTime: { format: 'date-time', type: 'string' },
+                  url: { format: 'uri', type: 'string' }
+                },
+                required: ['checksum', 'modifiedDateTime', 'url'],
+                type: 'object'
+              }
+            },
+            required: [
+              'checksum',
+              'filesize',
+              'label',
+              'mimetype',
+              'modifiedDateTime',
+              'progressiveDownloadURL',
+              'subtitled'
+            ],
+            type: 'object'
+          }
+        }
+      }
+    },
+    description: 'Get a media item by key and language.',
+    operationId: 'getMediaItem',
+    parameters: [
+      { $ref: '#/components/parameters/LangCode' },
+      { $ref: '#/components/parameters/MediaKey' }
+    ],
+    responses: {
+      200: {
+        content: {
+          'application/json': {
+            schema: {
+              properties: {
+                data: { $ref: '#/components/schemas/MediaItem' },
+                meta: { $ref: '#/components/schemas/ApiMeta' },
+                success: { enum: [true], type: 'boolean' }
+              },
+              required: ['success', 'data', 'meta'],
+              type: 'object'
+            }
+          }
+        },
+        description: 'Successful response.'
+      },
+      400: { $ref: '#/components/responses/400' },
+      404: { $ref: '#/components/responses/404' }
+    },
+    summary: 'Get media item.',
+    tags: ['Mediator', 'Media']
+  }
 })
 
 export default defineLoggedEventHandler(async (event) => {
-  const { key, langcode: langwritten } = await getValidatedRouterParams(event, routeSchema.parse)
+  const { key, langcode: langwritten } = parseRouteParams(event, routeSchema)
 
-  return await mediatorService.getMediaItem({ key: key as MediaKey, langwritten })
+  const result = await mediatorService.getMediaItem({ key, langwritten })
+  return apiSuccess(result)
 })

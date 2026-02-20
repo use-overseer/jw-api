@@ -24,7 +24,7 @@ const getMeetingPublications = async (date?: { week: number; year: number }) => 
 }
 
 const getMeetingArticles = async (
-  langwritten: JwLangCode,
+  langwritten: JwLangCode = 'E',
   date?: { week: number; year: number }
 ) => {
   const { watchtower, workbook } = await getMeetingPublications(date)
@@ -34,6 +34,11 @@ const getMeetingArticles = async (
 
   const mwbYear = workbook ? +workbook.issue.slice(0, 4) : null
   const mwbMonth = workbook ? +workbook.issue.slice(4) : null
+
+  logger.debug(`wtYear: ${wtYear}`)
+  logger.debug(`wtMonth: ${wtMonth}`)
+  logger.debug(`mwbYear: ${mwbYear}`)
+  logger.debug(`mwbMonth: ${mwbMonth}`)
 
   const [wtPub, mwbPub] = await Promise.allSettled([
     watchtower && wtMonth && wtYear
@@ -52,6 +57,13 @@ const getMeetingArticles = async (
       : null
   ])
 
+  logger.debug(
+    `wtPub: ${wtPub.status === 'fulfilled' && !!wtPub.value?.files[langwritten]?.JWPUB?.[0]}`
+  )
+  logger.debug(
+    `mwbPub: ${mwbPub.status === 'fulfilled' && !!mwbPub.value?.files[langwritten]?.JWPUB?.[0]}`
+  )
+
   const monday = getMondayOfWeek(date)
 
   const [wtArticle, mwbArticle] = await Promise.allSettled([
@@ -63,10 +75,65 @@ const getMeetingArticles = async (
       : null
   ])
 
+  logger.debug(
+    `wtArticle: ${wtArticle.status === 'fulfilled' && wtArticle.value ? 'true' : 'false'}`
+  )
+  logger.debug(
+    `mwbArticle: ${mwbArticle.status === 'fulfilled' && mwbArticle.value ? 'true' : 'false'}`
+  )
+
   return {
     watchtower: wtArticle.status === 'fulfilled' && wtArticle.value ? wtArticle.value : null,
     workbook: mwbArticle.status === 'fulfilled' && mwbArticle.value ? mwbArticle.value : null
   }
 }
 
-export const meetingService = { getMeetingArticles, getMeetingPublications }
+const getMeetingSchedule = async (
+  langwritten: JwLangCode = 'E',
+  date?: { week: number; year: number }
+) => {
+  const { watchtower, workbook } = await getMeetingPublications(date)
+
+  const wtYear = watchtower ? +watchtower.issue.slice(0, 4) : null
+  const wtMonth = watchtower ? +watchtower.issue.slice(4) : null
+
+  const mwbYear = workbook ? +workbook.issue.slice(0, 4) : null
+  const mwbMonth = workbook ? +workbook.issue.slice(4) : null
+
+  const [wtPub, mwbPub] = await Promise.allSettled([
+    watchtower && wtMonth && wtYear
+      ? await pubMediaService.getWtJwpub({
+          date: { month: wtMonth, year: wtYear },
+          langwritten
+        })
+      : null,
+    workbook && mwbMonth && mwbYear
+      ? await pubMediaService.getMwbJwpub({
+          date: { month: mwbMonth, year: mwbYear },
+          langwritten
+        })
+      : null
+  ])
+
+  const [wtSchedule, mwbSchedule] = await Promise.allSettled([
+    wtPub.status === 'fulfilled' && wtPub.value ? getPublicationSchedule(wtPub.value, 'wt') : null,
+    mwbPub.status === 'fulfilled' && mwbPub.value
+      ? getPublicationSchedule(mwbPub.value, 'mwb')
+      : null
+  ])
+
+  const monday = formatDate(getMondayOfWeek(date), 'YYYY-MM-DD')
+
+  return {
+    watchtower:
+      wtSchedule.status === 'fulfilled' && wtSchedule.value
+        ? (wtSchedule.value.find((s) => s.w_study_date === monday) ?? null)
+        : null,
+    workbook:
+      mwbSchedule.status === 'fulfilled' && mwbSchedule.value
+        ? (mwbSchedule.value.find((s) => s.mwb_week_date === monday) ?? null)
+        : null
+  }
+}
+
+export const meetingService = { getMeetingArticles, getMeetingPublications, getMeetingSchedule }

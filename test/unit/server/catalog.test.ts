@@ -1,5 +1,6 @@
 import fs from 'node:fs'
 import fsPromises from 'node:fs/promises'
+import { ReadableStream } from 'node:stream/web'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { catalogRepository } from '../../../server/repository/catalog'
@@ -21,21 +22,18 @@ vi.mock('node:stream', async () => {
 const logger = { debug: vi.fn() }
 const decompressGzip = vi.fn()
 const useStorage = vi.fn()
-const createInternalServerError = vi.fn((msg) => new Error(msg))
-const createNotFoundError = vi.fn((msg) => new Error(msg))
 const formatDate = vi.fn()
 const langCodeToMepsId = vi.fn()
 const querySingleMock = vi.fn()
-const getDatabase = vi.fn(() => ({ querySingle: querySingleMock }))
+const queryMock = vi.fn()
+const useDb = vi.fn(() => ({ query: queryMock, querySingle: querySingleMock }))
 
 vi.stubGlobal('logger', logger)
 vi.stubGlobal('decompressGzip', decompressGzip)
 vi.stubGlobal('useStorage', useStorage)
-vi.stubGlobal('createInternalServerError', createInternalServerError)
-vi.stubGlobal('createNotFoundError', createNotFoundError)
 vi.stubGlobal('formatDate', formatDate)
 vi.stubGlobal('langCodeToMepsId', langCodeToMepsId)
-vi.stubGlobal('getDatabase', getDatabase)
+vi.stubGlobal('useDb', useDb)
 
 describe('catalog utils', () => {
   beforeEach(() => {
@@ -48,7 +46,7 @@ describe('catalog utils', () => {
       vi.mocked(fs.existsSync).mockReturnValue(false)
       const mockStorage = { getItem: vi.fn(), setItem: vi.fn() }
       useStorage.mockReturnValue(mockStorage)
-      const mockStream = {}
+      const mockStream = new ReadableStream()
       vi.mocked(catalogRepository.fetchCatalog).mockResolvedValue(mockStream)
 
       await catalogService.getCatalog()
@@ -97,7 +95,7 @@ describe('catalog utils', () => {
         start: '2024-01-01'
       })
 
-      expect(getDatabase).toHaveBeenCalledWith('catalog')
+      expect(useDb).toHaveBeenCalledWith('catalog')
       expect(querySingleMock).toHaveBeenCalled()
     })
 
@@ -121,7 +119,7 @@ describe('catalog utils', () => {
         start: '2024-01-01'
       })
 
-      expect(getDatabase).toHaveBeenCalledWith('catalog')
+      expect(useDb).toHaveBeenCalledWith('catalog')
       expect(querySingleMock).toHaveBeenCalled()
     })
 
